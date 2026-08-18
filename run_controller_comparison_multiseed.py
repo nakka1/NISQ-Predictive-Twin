@@ -34,6 +34,7 @@ from physics_config import PhysicsConfig
 from dataset_v3 import QuantumNetworkDatasetV3
 from models import EdgeLSTM, train_edge_lstm
 from models_robust_training import train_edge_lstm_robust
+from models_dual_head import EdgeLSTMDualHead, DualHeadOrchestratorAdapter, train_dual_head
 from simple_baselines import PersistenceBaseline, OraclePredictor
 from repeater import QuantumRepeaterNode
 from orchestrator import DigitalTwinOrchestrator
@@ -98,6 +99,25 @@ def run_one_seed(seed: int, cfg: dict, device: torch.device, use_robust_training
     rows.append({"Controller": "Oracle", "Seed": seed, "Useful Pairs": o["Useful Pairs"],
                  "Useful Pair Rate (%)": o["Useful Pair Rate (%)"]})
 
+    # DualHead: separates "will it arrive" (availability head) from "how
+    # good if it arrives" (fidelity head) -- found in this session to give
+    # a much stronger and more consistent improvement over Blind than the
+    # single-head Predictive controller (see the seventeenth addendum).
+    window_size = ds_cfg["window_size"]
+    n_windows_total = len(df) - window_size
+    split_idx_dh = int(n_windows_total * (1.0 - ds_cfg["test_size"]))
+    avail_all = df["channel_available"].values[window_size:]
+    avail_train = torch.tensor(avail_all[:split_idx_dh], dtype=torch.float32).unsqueeze(1).to(device)
+
+    dual_model = EdgeLSTMDualHead(input_size=dataset.input_size, hidden_size=cfg["model"]["hidden_size"]).to(device)
+    dual_model = train_dual_head(dual_model, X_train, avail_train, y_train, threshold=threshold,
+                                  lambda_penalty=2.0, lambda_fn=2.0, epochs=250, lr=0.012,
+                                  device=device, verbose=False)
+    dh = run_controller("DualHead", DualHeadOrchestratorAdapter(dual_model), X_test, y_test, threshold,
+                         qn_cfg, blind_metrics_raw, device)
+    rows.append({"Controller": "DualHead", "Seed": seed, "Useful Pairs": dh["Useful Pairs"],
+                 "Useful Pair Rate (%)": dh["Useful Pair Rate (%)"]})
+
     return pd.DataFrame(rows)
 
 
@@ -123,7 +143,7 @@ def main(config_path: str = "config.yaml", seeds: list = None, use_robust_traini
         Yield_Mean=("Useful Pair Rate (%)", "mean"),
         Yield_Std=("Useful Pair Rate (%)", "std"),
     ).reset_index()
-    order = {"Blind": 0, "Reactive": 1, "Predictive": 2, "Oracle": 3}
+    order = {"Blind": 0, "Reactive": 1, "Predictive": 2, "DualHead": 3, "Oracle": 4}
     summary["_order"] = summary["Controller"].map(order)
     summary = summary.sort_values("_order").drop(columns="_order")
 
@@ -135,16 +155,21 @@ def main(config_path: str = "config.yaml", seeds: list = None, use_robust_traini
 
     reactive_yield = summary[summary["Controller"] == "Reactive"]["Yield_Mean"].iloc[0]
     predictive_yield = summary[summary["Controller"] == "Predictive"]["Yield_Mean"].iloc[0]
+    dualhead_yield = summary[summary["Controller"] == "DualHead"]["Yield_Mean"].iloc[0]
     oracle_yield = summary[summary["Controller"] == "Oracle"]["Yield_Mean"].iloc[0]
+    blind_yield = summary[summary["Controller"] == "Blind"]["Yield_Mean"].iloc[0]
 
-    print(f"\nAcross {len(seeds)} seeds: Predictive mean yield = {predictive_yield:.2f}%, "
-          f"Reactive mean yield = {reactive_yield:.2f}%")
+    print(f"\nAcross {len(seeds)} seeds: Predictive={predictive_yield:.2f}%, DualHead={dualhead_yield:.2f}%, "
+          f"Reactive={reactive_yield:.2f}%, Blind={blind_yield:.2f}%")
     if predictive_yield > reactive_yield:
         print("  -> On average, Predictive > Reactive (the single-seed collapse seen earlier was not representative).")
     else:
         print("  -> On average, Predictive still does NOT beat Reactive -- a more robust finding, "
               "not just single-seed noise. Reported honestly.")
-    print(f"Average gap to Oracle: {oracle_yield - predictive_yield:.2f} percentage points.")
+    if dualhead_yield > blind_yield:
+        print(f"  -> DualHead beats Blind by {dualhead_yield - blind_yield:.2f} percentage points on average.")
+    print(f"Average gap to Oracle: Predictive {oracle_yield - predictive_yield:.2f}pp, "
+          f"DualHead {oracle_yield - dualhead_yield:.2f}pp.")
 
     all_df.to_csv("outputs/controller_comparison_multiseed_per_seed.csv", index=False)
     summary.to_csv("outputs/controller_comparison_multiseed_summary.csv", index=False)
