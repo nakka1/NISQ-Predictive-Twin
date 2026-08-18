@@ -122,6 +122,34 @@ class CSVTelemetrySource(TelemetrySource):
         if "Transmission_Efficiency" not in df.columns and "Loss_dB" in df.columns:
             df["Transmission_Efficiency"] = 10 ** (-df["Loss_dB"] / 10.0)
 
+        # --- Optical-layer fallbacks (Section 4 causal chain columns) ---
+        # A real DWDM transponder commonly reports optical_power_dbm and
+        # osnr_db directly; if a feed lacks them, approximate from Loss_dB
+        # assuming zero interference penalty (a documented simplification --
+        # the real interference-penalty physics in dataset_v3.py is not
+        # recoverable from a raw feed that doesn't already report it).
+        if "optical_power_dbm" not in df.columns and "Loss_dB" in df.columns:
+            print("CSVTelemetrySource: 'optical_power_dbm' missing, approximating as "
+                  "TX_POWER_DBM - Loss_dB (assumes zero interference penalty).")
+            df["optical_power_dbm"] = 0.0 - df["Loss_dB"]
+        if "osnr_db" not in df.columns and "optical_power_dbm" in df.columns:
+            print("CSVTelemetrySource: 'osnr_db' missing, approximating as "
+                  "optical_power_dbm - NOISE_FLOOR_DBM(-40 dBm default).")
+            df["osnr_db"] = df["optical_power_dbm"] - (-40.0)
+
+        # --- Environmental proxies: not standard transponder telemetry --
+        # default to a nominal constant with an explicit printed warning
+        # (never silent) rather than raising, since these are secondary
+        # features, not central to the fidelity target itself.
+        for col, default_val, note in [
+            ("phase_drift", 0.0, "no phase-drift telemetry available"),
+            ("temperature", 293.15, "no temperature telemetry available (defaulting to 20C)"),
+            ("polarization_drift", 0.0, "no polarization-drift telemetry available"),
+        ]:
+            if col not in df.columns:
+                print(f"CSVTelemetrySource: '{col}' missing ({note}) -- defaulting to {default_val} for all rows.")
+                df[col] = default_val
+
         if "channel_available" not in df.columns and "F_t" in df.columns:
             # Infer arrival from a nonzero recorded fidelity, if the feed
             # doesn't explicitly flag it -- a reasonable fallback, though a

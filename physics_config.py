@@ -33,6 +33,18 @@ class PhysicsConfig:
     TRANSMISSION_EXPOSURE_TIME: float = 1.0e-5   # baseline channel exposure time during transmission (s)
     SEED: int = 42
 
+    # --- NEW: WDM-observable optical causal chain parameters (added for the
+    # phase-drift -> optical -> quantum coupling; see dataset_v3.py's module
+    # docstring for the full documented equation/hypothesis/limitations set
+    # required whenever an approximation is introduced). All have defaults,
+    # so no existing PhysicsConfig(...) call site anywhere in the repo needs
+    # to change. ---
+    TX_POWER_DBM: float = 0.0          # nominal launch power (dBm)
+    NOISE_FLOOR_DBM: float = -40.0     # ASE/thermal noise floor in the reference bandwidth (dBm)
+    KAPPA_PHASE: float = 1.0           # environmental-stress -> phase-drift coupling (rad per unit theta)
+    KAPPA_DEPOL_FROM_BER: float = 15.0  # optical BER -> extra quantum depolarizing-probability coupling
+    KAPPA_ENV_T1T2: float = 0.03        # shared-environment -> T1/T2 degradation coupling
+
     def __post_init__(self):
         assert self.T2 <= 2 * self.T1, "Physical constraint violated: T2 must be <= 2*T1"
         assert 0.0 <= self.DEPOLARIZATION_P <= 1.0, "DEPOLARIZATION_P must be a probability"

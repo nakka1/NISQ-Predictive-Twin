@@ -166,21 +166,32 @@ class QuantumNetworkDataset:
         constrói janelas deslizantes (batch, seq_len, 10) e separa
         treino/teste sem embaralhar (preserva a ordem cronológica). O alvo
         de predição continua sendo a fidelidade futura F_(t+1).
+
+        CORREÇÃO DE DATA LEAKAGE (auditoria posterior, ver README): o split
+        temporal agora acontece ANTES do ajuste do scaler, e o MinMaxScaler
+        é ajustado (`fit`) apenas nas linhas utilizáveis para janelas de
+        treino -- nunca no conjunto de teste. A versão anterior ajustava o
+        scaler no dataset inteiro antes do split, causando vazamento de
+        informação do futuro (teste) para a normalização usada no treino.
         """
         features = df[self.FEATURE_COLUMNS].values
         target = df[["F_t"]].values  # já está em [0, 1]
 
+        n_windows = len(features) - window_size
+        split_idx = int(n_windows * (1.0 - test_size))
+        train_cutoff_row = split_idx + window_size
+
         feat_scaler = MinMaxScaler(feature_range=(0.0, 1.0))
-        features_scaled = feat_scaler.fit_transform(features)
+        feat_scaler.fit(features[:train_cutoff_row])          # TREINO APENAS -- sem vazamento
+        features_scaled = feat_scaler.transform(features)     # transform-only, aplicado depois
 
         X, y = [], []
-        for i in range(len(features_scaled) - window_size):
+        for i in range(n_windows):
             X.append(features_scaled[i:i + window_size])
             y.append(target[i + window_size])
         X = np.asarray(X, dtype=np.float32)
         y = np.asarray(y, dtype=np.float32)
 
-        split_idx = int(len(X) * (1.0 - test_size))
         X_train, X_test = X[:split_idx], X[split_idx:]
         y_train, y_test = y[:split_idx], y[split_idx:]
 

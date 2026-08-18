@@ -1,0 +1,10 @@
+Experiment,MAE,RMSE,R2,QPU Attempts,QPU Halted,Useful Pairs,QPU Yield (%)
+Naive (constant mean),0.30138,0.31481,-0.0021,-,-,-,-
+Blind Baseline,-,-,-,796,0,247,31.03
+A: WDM-only,0.25799,0.39403,-0.57,0,796,0,0.0
+B: quantum-aware,0.33124,0.45662,-1.1083,796,0,247,31.03
+B: quantum-aware -- Persistence,0.33982,0.45376,-1.082,586,210,222,37.88
+B: quantum-aware -- MovingAvg(5),0.33343,0.45202,-1.0661,584,212,206,35.27
+C: full,0.26291,0.40513,-0.6597,610,186,196,32.13
+C: full -- Persistence,0.4671,0.56502,-2.2282,487,309,154,31.62
+C: full -- MovingAvg(5),0.32271,0.40461,-0.6554,280,516,84,30.0

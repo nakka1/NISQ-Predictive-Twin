@@ -20,15 +20,16 @@ model:
 
 loss:
   threshold: 0.65
-  lambda_penalty: 4.0   # recalibrado: 10.0 era excessivamente conservador após a correção
-                        # de autocorrelação do dataset (ver README, seção "Correções")
+  lambda_penalty: 0.5   # recalibrado nesta sessão: a reescrita causal WDM (Δφc, θ ambiental)
+                        # mudou a distribuição de F(t) o suficiente para exigir nova calibração;
+                        # 4.0 (valor anterior) causava colapso total (0 tentativas)
   lambda_fn: 4.0
-  discard_penalty_weight: 10.0
-  max_discard_rate: 0.60
+  discard_penalty_weight: 25.0
+  max_discard_rate: 0.65
 
 training:
-  epochs: 150
-  lr: 0.012
+  epochs: 250
+  lr: 0.02
 
 quantum_node:
   T1: 50e-6

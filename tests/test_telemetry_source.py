@@ -53,8 +53,11 @@ def test_csv_source_column_mapping_and_causal_derivation(tmp_path):
     """
     Regression test for the core roadmap requirement applied to REAL data:
     a feed with different column names and WITHOUT the derived columns
-    (Loss_dB, Transmission_Efficiency, channel_available) must still work,
-    with those columns causally derived rather than required as raw input.
+    (Loss_dB, Transmission_Efficiency, channel_available, optical_power_dbm,
+    osnr_db) must still work, with those columns causally derived (or,
+    for the environmental proxies not in standard transponder telemetry,
+    given an explicit documented fallback default) rather than required
+    as raw input.
     """
     raw = pd.DataFrame({
         "fidelity_measured": [0.7, 0.65, 0.0, 0.72],
@@ -80,6 +83,12 @@ def test_csv_source_column_mapping_and_causal_derivation(tmp_path):
     assert (df["Loss_dB"] == 0.2 * df["Distance_km"]).all()
     expected_eta = 10 ** (-df["Loss_dB"] / 10.0)
     assert (df["Transmission_Efficiency"] - expected_eta).abs().max() < 1e-9
+    # optical_power_dbm / osnr_db fell back to the documented zero-interference approximation
+    assert (df["optical_power_dbm"] == 0.0 - df["Loss_dB"]).all()
+    assert (df["osnr_db"] == df["optical_power_dbm"] + 40.0).all()
+    # environmental proxies fell back to their documented nominal defaults
+    assert (df["phase_drift"] == 0.0).all()
+    assert (df["temperature"] == 293.15).all()
     assert list(df["channel_available"]) == [1.0, 1.0, 0.0, 1.0]
 
 

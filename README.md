@@ -737,3 +737,109 @@ regression guard confirming the model's admission decision is computed
 BEFORE any true-fidelity value is read -- i.e., it genuinely cannot cheat).
 
 **Total test suite: 104 tests, all passing.**
+
+---
+
+## Ninth addendum: Master Audit (Fase 1-3 parcial) — correções metodológicas críticas
+
+Um prompt mestre de auditoria científica (36 seções) foi recebido, pedindo
+uma revisão completa de rigor metodológico. Seguindo a própria instrução do
+prompt ("NÃO implemente tudo de uma vez"), esta sessão cobriu Fases 1-3
+(Auditoria, Correções Metodológicas, Modelo Causal Óptico) — o relatório
+completo (formato Seções A-I exigido) está documentado separadamente na
+resposta da conversa.
+
+### OLD/NEW/REASON: correção de data leakage
+
+```
+OLD: MinMaxScaler.fit_transform() era chamado no dataset inteiro ANTES do
+     split treino/teste, em dataset.py, dataset_v3.py, e
+     run_compare_ou_vs_causal_v3.py.
+NEW: O split temporal acontece PRIMEIRO; o scaler é ajustado (fit) apenas
+     nas linhas utilizáveis para janelas de treino, depois aplicado
+     (transform-only) ao restante da série.
+REASON: Vazamento de informação do futuro (teste) para a normalização
+        usada no treino é um erro metodológico real, mesmo que de
+        magnitude tipicamente pequena para MinMaxScaler em séries
+        limitadas como as deste projeto. Corrigido incondicionalmente,
+        não apenas sinalizado.
+```
+
+### OLD/NEW/REASON: separação WDM-observável vs. quantum-privilegiado
+
+```
+OLD: FEATURE_COLUMNS misturava F_t, T1, T2, Depolarization_Level
+     (quantum-privilegiado) com BER, Loss_dB, Distance_km, etc.
+     (WDM-observável), sem distinção.
+NEW: WDM_FEATURE_COLUMNS e QUANTUM_FEATURE_COLUMNS explícitos;
+     preprocess(..., feature_set="wdm_only"|"quantum_aware"|"full").
+     Dataclasses WDMTelemetry / QuantumStateTarget documentam o contrato.
+REASON: A hipótese científica central do projeto (telemetria WDM tem
+        informação preditiva sobre degradação quântica futura) não pode
+        ser testada honestamente se o modelo "WDM-only" secretamente
+        recebe acesso a F_t/T1/T2 históricos.
+```
+
+### OLD/NEW/REASON: Δφc(t) como cadeia causal, não fórmula artificial
+
+```
+OLD: F(t) tinha apenas uma penalização ad hoc de BER; não existia Δφc(t)
+     explícito nem influência mensurável de variáveis ópticas sobre o
+     canal quântico.
+NEW: θ(t) [ambiente compartilhado] -> Δφc(t) -> penalidade de
+     interferência -> optical_power -> OSNR -> BER óptico -> depolarização
+     extra do canal quântico; θ(t) também acopla diretamente a T1/T2.
+     Cada aproximação documentada com equação/hipótese/faixa de
+     validade/parâmetros/referência/limitações.
+REASON: O prompt de auditoria exige explicitamente que Δφc tenha
+        "influência física mensurável" sobre variáveis ópticas e,
+        subsequentemente, sobre o estado quântico -- não uma correlação
+        artificial direta sem justificativa.
+```
+
+### Bug de deriva treino/teste encontrado (de novo) e corrigido
+
+Ao introduzir θ(t), reintroduzi o mesmo tipo de bug já documentado
+anteriormente neste projeto: `mean_reversion` fraco demais (0.02-0.03) fez
+θ(t) — e por acoplamento, toda a cadeia causal — derivar para um regime
+persistentemente diferente por volta do split de teste cronológico
+(observado: 18.8% de amostras "boas" no dataset inteiro, mas apenas 4.9%
+na fatia de teste isolada). Corrigido aumentando `mean_reversion` para 0.05
+(passeios base) e 0.1 (θ especificamente): 42.9% treino / 31.0% teste --
+ainda imperfeito, mas muito mais equilibrado. `config.yaml`'s
+`lambda_penalty` também foi recalibrado de 4.0 para 0.5 (o valor antigo
+causava colapso total: 0 tentativas de purificação).
+
+### Resultado real do Experimento WDM-only vs. quantum-aware vs. full
+
+```
+      Experiment      MAE   QPU Attempts  Useful Pairs  QPU Yield(%)
+Blind Baseline          -            796           247         31.03
+A: WDM-only         0.258              0             0          0.00
+B: quantum-aware     0.331            796           247         31.03
+B -- Persistence     0.340            586           222         37.88
+B -- MovingAvg(5)    0.333            584           206         35.27
+C: full              0.263            610           196         32.13
+```
+
+**Achado honesto, não escondido**: A (WDM-only) tem o MELHOR MAE de
+regressão pura das três condições (+14.4% sobre o baseline trivial),
+sugerindo que I(X_WDM; F(t+Δt)) > 0 -- mas seu controle de admissão
+colapsou para "sempre HALT" (0 tentativas), tornando essa vitória de
+regressão inútil para a decisão real. Ainda mais notável: a baseline
+Persistence obrigatória (Seção 15) SUPEROU o modelo B (quantum-aware)
+treinado em yield (37.88% vs. 31.03%) -- um lembrete direto de que o
+LSTM treinado nem sempre bate um baseline trivial, exatamente o tipo de
+resultado que a Seção 15 existe para expor. Isso é reportado como está,
+sem reformular a conclusão.
+
+### O que esta sessão NÃO alcançou (Fases 4-9 do prompt de auditoria)
+
+Controlador de 3 estados (HALT/WAIT/PURIFY), predição probabilística
+com calibração, comparação Blind/Reactive/Predictive/Oracle, separação de
+energia, latência configurada vs. medida, ambiente closed-loop,
+reorganização em pacotes, Aer reference vs. fast simulator, testes
+estatísticos de causalidade (mutual information/Granger), e manifests
+completos de reprodutibilidade -- nenhum destes foi implementado nesta
+sessão. Ver relatório completo (formato Seções A-I) na conversa para a
+lista priorizada de próximos passos.

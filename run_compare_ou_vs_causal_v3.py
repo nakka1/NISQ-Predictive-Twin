@@ -52,16 +52,23 @@ class OrnsteinUhlenbeckDataset:
         return pd.DataFrame({"phase_deviation": phase, "temp_gradient": temp, "fidelity": fidelity})
 
     def preprocess(self, df, window_size=20, test_size=0.2):
+        """DATA LEAKAGE FIX (see dataset_v3.py's disclosure): split first, fit scaler on train only."""
         features = df[["phase_deviation", "temp_gradient"]].values
         target = df[["fidelity"]].values
+
+        n_windows = len(features) - window_size
+        split = int(n_windows * (1 - test_size))
+        train_cutoff_row = split + window_size
+
         scaler = MinMaxScaler()
-        features_scaled = scaler.fit_transform(features)
+        scaler.fit(features[:train_cutoff_row])          # TRAIN ONLY -- no leakage
+        features_scaled = scaler.transform(features)
+
         X, y = [], []
-        for i in range(len(features_scaled) - window_size):
+        for i in range(n_windows):
             X.append(features_scaled[i:i+window_size])
             y.append(target[i+window_size])
         X, y = np.asarray(X, dtype=np.float32), np.asarray(y, dtype=np.float32)
-        split = int(len(X) * (1 - test_size))
         return (torch.tensor(X[:split]), torch.tensor(y[:split]),
                 torch.tensor(X[split:]), torch.tensor(y[split:]), scaler)
 
