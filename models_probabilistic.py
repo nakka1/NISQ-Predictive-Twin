@@ -236,11 +236,22 @@ class EnsembleProbabilisticPredictor:
     -trained `EdgeLSTM` point-estimate models (via
     `models_robust_training.train_edge_lstm_robust`) rather than a single
     model's learned log-variance head.
+
+    `sigma_temperature` (fifteenth addendum's under-dispersion fix, Section
+    14): a scalar multiplier applied to the raw inter-model-disagreement
+    sigma, found via `calibrate_sigma_temperature()` on a held-out
+    validation split. Raw ensemble disagreement alone was found to be
+    systematically too narrow (1-sigma coverage of only 4% on a real run,
+    vs. the ~68% a well-calibrated Gaussian predictive distribution should
+    give) -- temperature scaling is the standard, simple fix (Guo et al.
+    2017-style scalar calibration, applied here to a regression sigma
+    instead of a classification softmax).
     """
 
-    def __init__(self, models: list, sigma_floor: float = 1e-3):
+    def __init__(self, models: list, sigma_floor: float = 1e-3, sigma_temperature: float = 1.0):
         self.models = models
         self.sigma_floor = sigma_floor
+        self.sigma_temperature = sigma_temperature
 
     def eval(self):
         for m in self.models:
@@ -251,7 +262,7 @@ class EnsembleProbabilisticPredictor:
         with torch.no_grad():
             preds = torch.stack([m(x) for m in self.models], dim=0)  # (K, batch, 1)
         mu = preds.mean(dim=0)
-        sigma = preds.std(dim=0)
+        sigma = preds.std(dim=0) * self.sigma_temperature
         # A floor prevents an exactly-zero sigma on samples where all
         # ensemble members happen to agree perfectly (which would make the
         # ThreeStateController's confidence bounds degenerate to a single point).
@@ -259,34 +270,106 @@ class EnsembleProbabilisticPredictor:
         return mu, sigma
 
 
+def calibrate_sigma_temperature(mu_val: np.ndarray, sigma_val_raw: np.ndarray, y_val: np.ndarray) -> float:
+    """
+    Closed-form global temperature for a Gaussian predictive distribution:
+    the well-calibrated second-moment condition is
+    E[(y - mu)^2 / sigma_calibrated^2] = 1, i.e.
+
+        T = sqrt( mean( (y - mu)^2 / sigma_raw^2 ) )
+
+    so that `sigma_calibrated = T * sigma_raw` satisfies it exactly on the
+    validation set it was fit on (Guo et al. 2017-style scalar calibration,
+    adapted from classification-softmax temperature scaling to a
+    regression sigma). A single global scalar, not per-sample -- it fixes
+    systematic over/under-confidence without changing the RELATIVE
+    ordering of per-sample uncertainty the ensemble already provides.
+    """
+    sigma_val_raw = np.clip(sigma_val_raw, 1e-9, None)
+    normalized_sq_residuals = ((y_val - mu_val) ** 2) / (sigma_val_raw ** 2)
+    return float(np.sqrt(np.mean(normalized_sq_residuals)))
+
+
 def train_ensemble_probabilistic(model_factory, X_train_full: torch.Tensor, y_train_full: torch.Tensor,
                                   n_models: int = 5, base_seed: int = 2000, threshold: float = 0.65,
                                   lambda_penalty: float = 0.9, lambda_fn: float = 4.0,
                                   discard_penalty_weight: float = 25.0, max_discard_rate: float = 0.60,
                                   max_epochs: int = 300, lr: float = 0.018, batch_size: int = 64,
-                                  patience: int = 20, device: torch.device = None, verbose: bool = False):
+                                  patience: int = 20, bootstrap: bool = True,
+                                  calibrate_temperature: bool = True,
+                                  calibration_fraction: float = 0.15,
+                                  device: torch.device = None, verbose: bool = False):
     """
     Trains `n_models` independent `EdgeLSTM` point-estimate models (each via
     the robust trainer -- mini-batch + temporal validation + early stopping
     + LR scheduling, the same fix that resolved the Predictive-vs-Reactive
-    instability in the twelfth addendum), each with a different random
-    seed for genuine diversity, and wraps them as an
-    `EnsembleProbabilisticPredictor`.
+    instability in the twelfth addendum), wraps them as an
+    `EnsembleProbabilisticPredictor`, and calibrates its sigma temperature
+    on a held-out slice.
 
     `lambda_penalty=0.9` defaults to the value the twelfth addendum found
     gives non-degenerate, non-collapsing behavior with the robust trainer.
+
+    bootstrap: if True (default), each ensemble member trains on its own
+        bootstrap resample (sampling WITH replacement, same size as the
+        original) of the non-calibration training portion -- the classic
+        bagging technique for increasing genuine inter-model diversity,
+        directly targeting the under-dispersion problem at its source
+        (rather than only correcting it after the fact via temperature
+        scaling).
+    calibration_fraction: the LAST this-fraction of X_train_full/y_train_full
+        (chronologically, never touched by any member's own training or
+        internal validation) is held out to fit `sigma_temperature` --
+        keeping the temperature-scaling data strictly separate from every
+        member's training and early-stopping data. Only used if
+        `calibrate_temperature=True`.
+    calibrate_temperature: if True (default), fits `sigma_temperature` for
+        STATISTICALLY HONEST calibration (1-sigma coverage close to the
+        theoretical ~68%). If False, leaves sigma at its raw (uncalibrated)
+        inter-model-disagreement scale.
+
+        IMPORTANT, non-obvious trade-off found empirically (fifteenth
+        addendum): on this project's dataset, the underlying point-estimate
+        ensemble's accuracy (MAE roughly 0.25-0.33, consistent with this
+        project's other point-estimate results) means that a HONESTLY
+        calibrated sigma is necessarily large enough that `ThreeStateController`
+        lands in WAIT for effectively 100% of samples at any practical
+        `confidence_k` -- which is the CORRECT behavior for a well-calibrated
+        system given how imprecise the underlying point estimate actually is,
+        but yields a controller that almost never commits to PURIFY/HALT.
+        The raw (uncalibrated) sigma is narrower and gives a more
+        "decisive" controller (e.g. 14.4% wait rate at k=1.0), but is
+        statistically overconfident (~4% actual 1-sigma coverage instead of
+        ~68%). Neither option is simply "correct" -- `calibrate_temperature=True`
+        is the statistically honest default; set it to False if a more
+        decisive (but overconfident) controller is preferred for a specific
+        deployment, and document that trade-off explicitly if you do.
 
     model_factory: zero-argument callable returning a fresh `EdgeLSTM` instance.
     """
     from models_robust_training import train_edge_lstm_robust
 
+    n_total = len(X_train_full)
+    n_cal = max(int(n_total * calibration_fraction), 1)
+    n_fit = n_total - n_cal
+    X_fit, y_fit = X_train_full[:n_fit], y_train_full[:n_fit]
+    X_cal, y_cal = X_train_full[n_fit:], y_train_full[n_fit:]
+
     models = []
     val_losses = []
+    rng = np.random.default_rng(base_seed)
     for i in range(n_models):
         torch.manual_seed(base_seed + i)
         model = model_factory()
+
+        if bootstrap:
+            boot_idx = rng.integers(0, n_fit, size=n_fit)
+            X_member, y_member = X_fit[boot_idx], y_fit[boot_idx]
+        else:
+            X_member, y_member = X_fit, y_fit
+
         trained_model, val_loss = train_edge_lstm_robust(
-            model, X_train_full, y_train_full, threshold=threshold, lambda_penalty=lambda_penalty,
+            model, X_member, y_member, threshold=threshold, lambda_penalty=lambda_penalty,
             lambda_fn=lambda_fn, discard_penalty_weight=discard_penalty_weight,
             max_discard_rate=max_discard_rate, max_epochs=max_epochs, lr=lr,
             batch_size=batch_size, patience=patience, device=device, verbose=verbose,
@@ -294,6 +377,19 @@ def train_ensemble_probabilistic(model_factory, X_train_full: torch.Tensor, y_tr
         models.append(trained_model)
         val_losses.append(val_loss)
         if verbose:
-            print(f"    Ensemble member {i+1}/{n_models} trained, val_loss={val_loss:.6f}")
+            print(f"    Ensemble member {i+1}/{n_models} trained "
+                  f"({'bootstrap' if bootstrap else 'shared'} data), val_loss={val_loss:.6f}")
 
-    return EnsembleProbabilisticPredictor(models), val_losses
+    ensemble = EnsembleProbabilisticPredictor(models, sigma_temperature=1.0)
+
+    if calibrate_temperature:
+        ensemble.eval()
+        with torch.no_grad():
+            mu_cal, sigma_cal_raw = ensemble(X_cal)
+        temperature = calibrate_sigma_temperature(
+            mu_cal.numpy().ravel(), sigma_cal_raw.numpy().ravel(), y_cal.numpy().ravel())
+        ensemble.sigma_temperature = temperature
+        if verbose:
+            print(f"    Calibrated sigma_temperature={temperature:.3f} on {n_cal} held-out samples.")
+
+    return ensemble, val_losses

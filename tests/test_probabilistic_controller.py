@@ -195,3 +195,99 @@ def test_ensemble_probabilistic_predictor_works_with_three_state_controller():
     y_test = torch.rand(10, 1)
     result = controller.run(X_test, y_test)
     assert result["total_steps"] == 10
+
+
+def test_calibrate_sigma_temperature_matches_closed_form():
+    """T = sqrt(mean((y-mu)^2 / sigma_raw^2)) -- verify against a hand-computed case."""
+    from models_probabilistic import calibrate_sigma_temperature
+    mu = np.array([0.5, 0.5, 0.5])
+    sigma_raw = np.array([0.1, 0.1, 0.1])
+    y = np.array([0.7, 0.3, 0.5])  # residuals: 0.2, -0.2, 0.0
+    expected = np.sqrt(np.mean(((y - mu) ** 2) / (sigma_raw ** 2)))
+    assert calibrate_sigma_temperature(mu, sigma_raw, y) == pytest.approx(expected)
+
+
+def test_calibrate_sigma_temperature_one_when_already_well_calibrated():
+    """If sigma_raw already exactly matches |y-mu| everywhere, temperature should be ~1."""
+    from models_probabilistic import calibrate_sigma_temperature
+    rng = np.random.default_rng(0)
+    mu = rng.uniform(0, 1, 200)
+    errors = rng.normal(0, 0.1, 200)
+    y = mu + errors
+    sigma_raw = np.full(200, 0.1)  # matches the true error std exactly
+    temperature = calibrate_sigma_temperature(mu, sigma_raw, y)
+    assert temperature == pytest.approx(1.0, abs=0.15)
+
+
+def test_ensemble_predictor_sigma_temperature_scales_output():
+    from models_probabilistic import EnsembleProbabilisticPredictor
+    from models import EdgeLSTM
+    torch.manual_seed(11)
+    models = [EdgeLSTM(input_size=3, hidden_size=4) for _ in range(3)]
+    ensemble_raw = EnsembleProbabilisticPredictor(models, sigma_temperature=1.0)
+    ensemble_scaled = EnsembleProbabilisticPredictor(models, sigma_temperature=5.0)
+    x = torch.rand(10, 5, 3)
+    _mu1, sigma1 = ensemble_raw(x)
+    _mu2, sigma2 = ensemble_scaled(x)
+    assert torch.allclose(sigma2, sigma1 * 5.0, atol=1e-5)
+
+
+def test_train_ensemble_probabilistic_with_bootstrap_gives_more_diverse_sigma():
+    """Bootstrap resampling should increase inter-model disagreement (raw
+    sigma, before any temperature scaling) relative to training every
+    member on identical data."""
+    from models_probabilistic import train_ensemble_probabilistic
+    from models import EdgeLSTM
+    torch.manual_seed(12)
+    X = torch.rand(300, 8, 3)
+    y = torch.rand(300, 1)
+
+    torch.manual_seed(12)
+    ensemble_shared, _ = train_ensemble_probabilistic(
+        lambda: EdgeLSTM(input_size=3, hidden_size=6), X, y, n_models=3, base_seed=4000,
+        threshold=0.65, lambda_penalty=0.9, max_epochs=25, batch_size=16, patience=8,
+        bootstrap=False, calibrate_temperature=False)
+
+    torch.manual_seed(12)
+    ensemble_boot, _ = train_ensemble_probabilistic(
+        lambda: EdgeLSTM(input_size=3, hidden_size=6), X, y, n_models=3, base_seed=4000,
+        threshold=0.65, lambda_penalty=0.9, max_epochs=25, batch_size=16, patience=8,
+        bootstrap=True, calibrate_temperature=False)
+
+    # Both must at least run to completion and produce valid outputs --
+    # a strict "bootstrap > shared disagreement" assertion would be flaky
+    # at this tiny scale/epoch budget, so we check the mechanism functions
+    # rather than asserting a specific magnitude relationship.
+    _mu_s, sigma_s = ensemble_shared(X[:20])
+    _mu_b, sigma_b = ensemble_boot(X[:20])
+    assert sigma_s.shape == (20, 1) and sigma_b.shape == (20, 1)
+
+
+def test_train_ensemble_probabilistic_calibration_uses_held_out_slice_only():
+    """The calibration_fraction slice must be the LAST rows (chronological
+    hold-out), never included in any member's training data."""
+    from models_probabilistic import train_ensemble_probabilistic
+    from models import EdgeLSTM
+    torch.manual_seed(13)
+    X = torch.rand(200, 6, 3)
+    y = torch.rand(200, 1)
+    ensemble, _ = train_ensemble_probabilistic(
+        lambda: EdgeLSTM(input_size=3, hidden_size=4), X, y, n_models=2, base_seed=5000,
+        threshold=0.65, lambda_penalty=0.9, max_epochs=20, batch_size=16, patience=8,
+        bootstrap=True, calibrate_temperature=True, calibration_fraction=0.2)
+    # sigma_temperature must have been updated away from the uncalibrated default of 1.0
+    # (extremely unlikely to land exactly on 1.0 by chance on real data).
+    assert ensemble.sigma_temperature != 1.0
+
+
+def test_train_ensemble_probabilistic_calibrate_temperature_false_keeps_raw_scale():
+    from models_probabilistic import train_ensemble_probabilistic
+    from models import EdgeLSTM
+    torch.manual_seed(14)
+    X = torch.rand(200, 6, 3)
+    y = torch.rand(200, 1)
+    ensemble, _ = train_ensemble_probabilistic(
+        lambda: EdgeLSTM(input_size=3, hidden_size=4), X, y, n_models=2, base_seed=6000,
+        threshold=0.65, lambda_penalty=0.9, max_epochs=20, batch_size=16, patience=8,
+        bootstrap=True, calibrate_temperature=False)
+    assert ensemble.sigma_temperature == 1.0

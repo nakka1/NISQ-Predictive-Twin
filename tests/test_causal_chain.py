@@ -72,7 +72,16 @@ def test_causal_chain_independent_links_have_independent_physics():
 
 def test_ml_gated_chain_beats_ungated_baseline():
     """A real trained EdgeLSTM gate must substantially beat the ungated
-    baseline (even if it doesn't quite reach oracle performance)."""
+    baseline (even if it doesn't quite reach oracle performance).
+
+    NOTE (test-robustness fix): the training budget here was bumped from
+    n_steps_per_hop=800/epochs=150 to 1500/250 -- the smaller budget was
+    found to be genuinely flaky (single-seed legacy train_edge_lstm
+    collapse, the same well-documented instability the twelfth addendum's
+    robust trainer was built to address for the main controllers; this
+    specific chain class still uses the legacy trainer internally). This
+    is a test-quality fix, not a change to project logic.
+    """
     from causal_chain import MLGatedCausalSwappingChain
 
     distances = [8.0]
@@ -80,7 +89,7 @@ def test_ml_gated_chain_beats_ungated_baseline():
     r_ungated = chain_ungated.simulate(n_rounds=100)
 
     chain_ml = MLGatedCausalSwappingChain(distances_km=distances, fidelity_gate=0.65,
-                                           max_retries_per_hop=5, seed=1, n_steps_per_hop=800, epochs=150)
+                                           max_retries_per_hop=5, seed=1, n_steps_per_hop=1500, epochs=250)
     r_ml = chain_ml.simulate(n_rounds=80)
 
     assert r_ml["success_rate_pct"] > r_ungated["success_rate_pct"]

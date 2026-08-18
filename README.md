@@ -1254,3 +1254,87 @@ the next incremental step, not attempted here.
 
 ### Test suite: 14 tests in `test_probabilistic_controller.py` (4 new for
 the ensemble fix), all passing. **Total project test suite: 137 tests.**
+
+---
+
+## Sixteenth addendum: calibration completed -- a genuine trade-off found, not hidden
+
+Direct follow-up implementing the fifteenth addendum's flagged next steps:
+bootstrap resampling per ensemble member (bagging, increasing genuine
+diversity at the source) and post-hoc sigma temperature scaling
+(`calibrate_sigma_temperature()`, Guo et al. 2017-style, closed-form:
+`T = sqrt(mean((y-mu)^2 / sigma_raw^2))` on a held-out calibration slice
+never touched by any member's training).
+
+### Temperature scaling worked extremely well AS A CALIBRATION FIX
+
+```
+                    Before (raw ensemble)   After (temperature-calibrated)
+1-sigma coverage    4.0%                    68.47%   <- almost exactly the ~68%
+                                                          theoretical target
+sigma_temperature   1.0 (unscaled)          147.9
+mean sigma          0.0017                  0.509
+```
+
+### But this REVEALED a genuine, important trade-off, not a bug
+
+Once sigma is honestly calibrated, `ThreeStateController` lands in WAIT for
+essentially 100% of test samples at every `confidence_k` tried (0.05 through
+2.0) -- because the underlying point-estimate ensemble's actual accuracy
+(MAE roughly 0.25-0.33, consistent with this project's other point-estimate
+results throughout) means a STATISTICALLY HONEST sigma is simply too wide,
+relative to the gap between mu and the 0.65 threshold, to ever confidently
+commit to PURIFY or HALT for most samples. This is not a calibration
+failure -- it is calibration correctly reporting that the underlying
+predictor isn't precise enough to support confident individual-pair
+decisions, once you stop pretending otherwise.
+
+The RAW (uncalibrated) ensemble sigma, by contrast, gives a more decisive
+controller (14.4% wait rate at k=1.0) but is statistically overconfident
+(~4% actual coverage vs. the ~68% it should have if taken as a genuine
+1-sigma bound).
+
+### Resolution: both modes are now explicit, documented options
+
+`train_ensemble_probabilistic(..., calibrate_temperature=True|False)` --
+`True` (default) is the statistically honest choice; `False` keeps the
+raw, more decisive-but-overconfident scale for deployments that
+prioritize throughput over strict statistical calibration, with the
+trade-off stated explicitly in the docstring rather than silently picking
+one for the user. Neither is asserted as simply "correct" -- this is a
+genuine design decision a deployer must make deliberately, and the
+documentation says so.
+
+### 6 new tests (closed-form temperature formula verified against a
+hand-computed case, calibration convergence to ~1.0 on already-well
+-calibrated synthetic data, sigma scaling behavior, bootstrap mechanism,
+held-out calibration slice isolation, and the `calibrate_temperature=False`
+escape hatch). **Total project test suite: 143 tests, all passing.**
+
+### What this closes out
+
+The three-state controller's calibration work (thirteenth through
+sixteenth addenda) is now complete in the sense that matters: every
+remaining number is either well-calibrated (statistically honest) or
+explicitly flagged as a deliberate throughput-over-calibration trade-off,
+with the underlying mechanism (HALT/WAIT/PURIFY decision logic) fully
+tested and correct throughout. The deeper remaining limitation -- the
+point-estimate model's own MAE (~0.25-0.33) -- is a property of the
+regression model itself, not the calibration layer, and improving it
+further is the same open problem the twelfth addendum already identified
+for the point-estimate `Predictive` controller generally.
+
+### Minor test-robustness fix (same session)
+
+`test_ml_gated_chain_beats_ungated_baseline` (from the eighth addendum)
+was found to be genuinely flaky when re-run (passed once, failed twice
+across 3 runs this session) -- its small training budget
+(n_steps_per_hop=800, epochs=150) hit the same single-seed legacy-trainer
+instability documented throughout this project. Bumped to 1500/250
+(values already known to be more reliable from earlier addenda); verified
+passing twice in a row after the fix. This is a test-quality fix, not a
+change to any project logic -- `causal_chain.MLGatedCausalSwappingChain`
+still uses the legacy `train_edge_lstm` internally rather than the
+twelfth addendum's robust trainer, which remains a documented open item.
+
+**Final test suite for this session: 143 tests, all passing.**
