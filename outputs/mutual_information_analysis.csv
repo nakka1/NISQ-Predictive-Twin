@@ -1,0 +1,16 @@
+Feature,Group,Mutual_Info_with_F(t+1)
+Latency,WDM-observable,0.14700941880694884
+T1,quantum-privileged,0.11163256461834514
+T2,quantum-privileged,0.10662749516292891
+temperature,WDM-observable,0.09677649505956865
+phase_drift,WDM-observable,0.0754232723953443
+polarization_drift,WDM-observable,0.05349062602161059
+Depolarization_Level,quantum-privileged,0.03851859134845714
+optical_power_dbm,WDM-observable,0.03055362073060852
+osnr_db,WDM-observable,0.03055362073060852
+BER,WDM-observable,0.016365921754397217
+channel_available,WDM-observable,0.014737511919497237
+Distance_km,WDM-observable,0.010105565322065857
+Loss_dB,WDM-observable,0.010105565322065857
+Transmission_Efficiency,WDM-observable,0.009790516196174437
+Photon_Rate,WDM-observable,0.00456474764845094

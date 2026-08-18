@@ -1,0 +1,5 @@
+Controller,N_Seeds,Useful_Pairs_Mean,Useful_Pairs_Std,Yield_Mean,Yield_Std
+Blind,1,314.0,,39.45,
+Reactive,1,201.0,,39.49,
+Predictive,1,302.0,,40.0,
+Oracle,1,314.0,,100.0,

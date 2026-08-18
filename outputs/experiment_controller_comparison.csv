@@ -1,0 +1,5 @@
+Controller,Purification Count,QPU Operations (halted),Useful Pairs,Useful Pair Rate (%),QPU Cycle Savings (%),Mean F(true) of Purified Pairs,TP,FP,TN,FN
+Blind,796,0,247,31.03,0.0,0.3982,-,-,-,-
+Reactive,487,309,154,31.62,38.82,0.3984,154,333,216,93
+Predictive,796,0,247,31.03,0.0,0.3982,247,549,0,0
+Oracle,247,549,247,100.0,68.97,0.6653,247,0,549,0

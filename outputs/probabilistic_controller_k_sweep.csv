@@ -1,0 +1,5 @@
+confidence_k,HALT,WAIT_rate_%,PURIFY_direct,PURIFY_after_wait,Attempted,Useful_Pairs,Yield_%
+0.2,112,100.0,0,684,684,213,31.14
+0.3,112,100.0,0,684,684,213,31.14
+0.5,112,100.0,0,684,684,213,31.14
+1.0,112,100.0,0,684,684,213,31.14
