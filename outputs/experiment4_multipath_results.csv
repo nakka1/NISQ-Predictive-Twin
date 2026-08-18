@@ -1,0 +1,3 @@
+N_Hops,Single-Path Success (%),Multi-Path Success (%),Single-Path Cost/Round,Multi-Path Cost/Round,Fallback Rate (%)
+2,30.0,93.0,2.42,4.01,71.5
+3,23.5,91.5,3.01,5.43,72.5

@@ -1,0 +1,43 @@
+# config.yaml — Gêmeo Digital do Repetidor Quântico (v2: canais físicos)
+# Experimento 2: Qiskit Aer + canais de ruído físico substituindo o
+# gerador estatístico Ornstein-Uhlenbeck.
+
+seed: 42
+
+dataset:
+  n_steps: 4000
+  dt: 1.3e-5          # tempo de exposição ao canal por passo (s), calibrado para T1/T2 ~ dezenas de us
+  T1_base: 50e-6
+  T2_base: 30e-6
+  depol_prob_base: 0.01
+  distance_km_base: 20.0
+  window_size: 20
+  test_size: 0.2
+
+model:
+  hidden_size: 16
+  num_layers: 1
+
+loss:
+  threshold: 0.65
+  lambda_penalty: 4.0   # recalibrado: 10.0 era excessivamente conservador após a correção
+                        # de autocorrelação do dataset (ver README, seção "Correções")
+  lambda_fn: 4.0
+  discard_penalty_weight: 10.0
+  max_discard_rate: 0.60
+
+training:
+  epochs: 150
+  lr: 0.012
+
+quantum_node:
+  T1: 50e-6
+  T2: 30e-6
+  depol_prob: 0.01
+  shots: 512
+  seed: 7
+
+output:
+  model_path: "outputs/edge_lstm_experiment2.pt"
+  plots_dir: "outputs/plots"
+  results_csv: "outputs/experiment2_metrics.csv"

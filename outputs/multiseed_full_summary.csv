@@ -1,0 +1,7 @@
+Model,N Seeds,Pares Úteis (mean),Pares Úteis (std),Yield QPU (%) (mean),Yield QPU (%) (std),Economia QPU (%) (mean),Economia QPU (%) (std)
+Blind Baseline,2,316.0,209.3,39.7,26.29,,
+EdgeLSTM + CS_MSELoss,2,192.0,200.82,61.67,1.17,60.49,41.66
+LSTM + MSE,2,294.0,209.3,90.42,7.13,60.18,25.94
+Random Forest,2,297.0,206.48,90.67,8.26,59.99,24.96
+Transformer,2,301.0,205.06,86.96,9.26,57.86,25.14
+XGBoost,2,300.0,209.3,92.46,5.78,60.05,25.94

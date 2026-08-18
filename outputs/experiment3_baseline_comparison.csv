@@ -1,0 +1,7 @@
+Modelo,Ciclos Salvos (HALT),Tentativas QPU,Pares Úteis,Yield QPU (%),Economia QPU (%),Déficit/Superávit SKR,TP,FP,TN,FN,MAE Predição,Latência média (ms)
+Baseline Cego/Reativo,0,796,168,21.11,0.0,0,-,-,-,-,-,0.0
+EdgeLSTM + CS_MSELoss,716,80,50,62.5,89.95,-118,50,30,598,118,0.03052,0.182
+LSTM + MSE,625,171,146,85.38,78.52,-22,146,25,603,22,0.00584,0.1911
+Random Forest,618,178,151,84.83,77.64,-17,151,27,601,17,0.00521,9.4718
+XGBoost,624,172,152,88.37,78.39,-16,152,20,608,16,0.00523,0.4227
+Transformer,602,194,156,80.41,75.63,-12,156,38,590,12,0.0073,0.2138

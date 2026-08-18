@@ -1,0 +1,4 @@
+Modelo,N Sementes,useful_pairs (média),useful_pairs (±desvio),attempted (média),attempted (±desvio),yield_pct (média),yield_pct (±desvio),qpu_savings_pct (média),qpu_savings_pct (±desvio)
+Baseline Cego/Reativo,3,375.0,179.85,796.0,0.0,,,,
+EdgeLSTM + CS_MSELoss,3,263.0,187.85,391.67,269.92,65.84,7.27,50.8,33.91
+Transformer,3,356.67,175.25,381.33,172.22,91.7,6.09,52.09,21.64

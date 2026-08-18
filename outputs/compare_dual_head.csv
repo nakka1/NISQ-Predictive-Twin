@@ -1,0 +1,4 @@
+Model,MAE (blended),MAE (conditional),QPU Attempts,QPU Halted,Useful Pairs,QPU Yield (%)
+Blind Baseline,-,-,796,0,213,26.76
+Single-head (blended target),0.2874,-,796,0,213,26.76
+Dual-head (split target),0.24742,0.01666,162,634,103,63.58

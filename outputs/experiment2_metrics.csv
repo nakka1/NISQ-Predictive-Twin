@@ -1,0 +1,2 @@
+experiment,mode,total_steps,useful_pairs,halted,attempted,avg_classical_latency_s,baseline_mode,baseline_total_steps,baseline_useful_pairs,baseline_halted,baseline_attempted,baseline_avg_classical_latency_s,throughput_pairs_per_s,qpu_cycle_savings_pct,estimated_energy_saved_units,yield_qpu_pct,TP,FP,TN,FN
+exp2_physical_channels,intelligent,796,50,716,80,0.0001717662123101904,blind,796,168,0,796,0.0,22.882754187552038,89.9497487437186,716.0,62.5,50,30,598,118

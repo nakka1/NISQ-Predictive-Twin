@@ -1,0 +1,4 @@
+N_Saltos,Sucesso Fim-a-Fim (Inteligente) %,Sucesso Fim-a-Fim (Cego) %,Custo Médio/Rodada (Inteligente),Custo Médio/Rodada (Cego),Rodadas,HALTs por Salto (Inteligente)
+1,26.67,29.67,4.33,6.12,300,[620]
+2,29.67,29.67,2.46,6.42,300,"[1187, 0]"
+3,22.67,28.0,3.41,6.97,300,"[1012, 0, 182]"

@@ -1,0 +1,10 @@
+torch>=2.0
+qiskit>=1.0
+qiskit-aer>=0.14
+numpy
+pandas
+scikit-learn
+pyyaml
+matplotlib
+xgboost>=2.0  # opcional: baselines.py cai para GradientBoostingRegressor se ausente
+pytest>=7.0

@@ -1,0 +1,4 @@
+seed,baseline_useful_pairs,baseline_attempted,edgelstm_useful_pairs,edgelstm_attempted,edgelstm_halted,edgelstm_yield_pct,edgelstm_qpu_savings_pct,transformer_useful_pairs,transformer_attempted,transformer_halted,transformer_yield_pct,transformer_qpu_savings_pct
+42,168,796,50,80,716,62.5,89.9497487437186,155,183,613,84.69945355191257,77.01005025125627
+123,464,796,334,549,247,60.83788706739527,31.030150753768847,443,468,328,94.65811965811966,41.20603015075377
+7,493,796,405,546,250,74.17582417582418,31.407035175879393,472,493,303,95.74036511156187,38.06532663316583

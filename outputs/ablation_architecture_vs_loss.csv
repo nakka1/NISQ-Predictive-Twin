@@ -1,0 +1,6 @@
+Condition,Attempted,Useful Pairs,Yield (%),MAE
+Blind Baseline,796,168,21.11,-
+LSTM + MSE,175,148,84.57,0.00555
+LSTM + CS_MSELoss,73,57,78.08,0.03144
+Transformer + MSE,194,156,80.41,0.0073
+Transformer + CS_MSELoss,132,78,59.09,0.02594
