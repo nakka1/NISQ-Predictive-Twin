@@ -1,6 +1,6 @@
 # Quantum Repeater Digital Twin
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache2.0](https://img.shields.io/badge/License-apache.svg)](LICENSE)
 
 A research-grade digital twin of a quantum repeater node, driven by
 **WDM-observable classical telemetry** to predict quantum-state fidelity
