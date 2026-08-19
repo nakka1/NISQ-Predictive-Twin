@@ -14,3 +14,5 @@ statsmodels>=0.14  # Granger causality (run_causal_analysis.py, Fase 12 do promp
 pyinform>=0.2       # Transfer entropy (run_causal_analysis.py) -- biblioteca padrao e bem
                     # estabelecida para essa metrica especifica; nao ha alternativa razoavel
                     # ja presente no projeto
+pyarrow>=14.0       # Parquet read/write (telemetry_interface.ParquetTelemetrySource) --
+                    # padrao de facto para Parquet colunar em Python

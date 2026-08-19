@@ -106,3 +106,69 @@ def test_save_experiment_manifest_plots_directory(tmp_path):
 
     save_experiment_manifest(experiment_dir=experiment_dir, plot_paths=[str(fake_plot)])
     assert os.path.exists(os.path.join(experiment_dir, "plots", "fake_plot.png"))
+
+
+def test_generate_experiment_id_is_unique_across_calls():
+    from reproducibility import generate_experiment_id
+    id1 = generate_experiment_id()
+    id2 = generate_experiment_id()
+    assert id1 != id2
+
+
+def test_save_experiment_manifest_creates_hardware_and_requirements_lock_by_default(tmp_path):
+    experiment_dir = str(tmp_path / "hw_test")
+    save_experiment_manifest(experiment_dir=experiment_dir, config={"seed": 1})
+    assert os.path.exists(os.path.join(experiment_dir, "hardware.json"))
+    assert os.path.exists(os.path.join(experiment_dir, "requirements.lock"))
+
+
+def test_save_experiment_manifest_can_disable_hardware_and_requirements(tmp_path):
+    experiment_dir = str(tmp_path / "no_hw_test")
+    save_experiment_manifest(experiment_dir=experiment_dir, config={"seed": 1},
+                              include_hardware=False, include_requirements_lock=False)
+    assert not os.path.exists(os.path.join(experiment_dir, "hardware.json"))
+    assert not os.path.exists(os.path.join(experiment_dir, "requirements.lock"))
+
+
+def test_save_experiment_manifest_writes_command_and_stdout_log(tmp_path):
+    experiment_dir = str(tmp_path / "cmd_log_test")
+    save_experiment_manifest(experiment_dir=experiment_dir, command="python run_x.py --seed 1",
+                              stdout_log="line 1\nline 2\n")
+    command_path = os.path.join(experiment_dir, "command.txt")
+    log_path = os.path.join(experiment_dir, "stdout.log")
+    assert os.path.exists(command_path)
+    assert os.path.exists(log_path)
+    with open(command_path) as f:
+        assert f.read() == "python run_x.py --seed 1"
+
+
+def test_save_experiment_manifest_writes_versions_json_only_when_provided(tmp_path):
+    experiment_dir_with = str(tmp_path / "versions_yes")
+    save_experiment_manifest(experiment_dir=experiment_dir_with, dataset_version="v3")
+    assert os.path.exists(os.path.join(experiment_dir_with, "versions.json"))
+
+    experiment_dir_without = str(tmp_path / "versions_no")
+    save_experiment_manifest(experiment_dir=experiment_dir_without, config={"seed": 1})
+    assert not os.path.exists(os.path.join(experiment_dir_without, "versions.json"))
+
+
+def test_save_experiment_manifest_tables_directory(tmp_path):
+    experiment_dir = str(tmp_path / "tables_test")
+    fake_table = tmp_path / "fake_table.csv"
+    fake_table.write_text("a,b\n1,2\n")
+    save_experiment_manifest(experiment_dir=experiment_dir, table_paths=[str(fake_table)])
+    assert os.path.exists(os.path.join(experiment_dir, "tables", "fake_table.csv"))
+
+
+def test_save_experiment_manifest_auto_generates_experiment_id_when_omitted(tmp_path):
+    experiment_dir = str(tmp_path / "auto_id_test")
+    written = save_experiment_manifest(experiment_dir=experiment_dir, config={"seed": 1})
+    assert written["experiment_id"] is not None
+    assert len(written["experiment_id"]) > 0
+
+
+def test_save_experiment_manifest_respects_explicit_experiment_id(tmp_path):
+    experiment_dir = str(tmp_path / "explicit_id_test")
+    written = save_experiment_manifest(experiment_dir=experiment_dir, config={"seed": 1},
+                                        experiment_id="my_custom_id_123")
+    assert written["experiment_id"] == "my_custom_id_123"

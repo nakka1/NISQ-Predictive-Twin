@@ -223,3 +223,68 @@ class QuantumRepeaterEnvironment:
 
     def get_history(self) -> list:
         return list(self._history)
+
+    # ------------------------------------------------------------------
+    # Master prompt Fase 16: WAIT as a genuine multi-round physical action.
+    # The single-shot `step("WAIT")` above (kept unchanged, for backward
+    # compatibility) computes a ONE-TIME decay estimate. These three
+    # methods implement the FULL requested cycle instead:
+    #
+    #     WAIT -> decoherence/storage time -> new observation ->
+    #     new prediction -> new decision -> (WAIT again, or HALT/PURIFY)
+    #
+    # by actually HOLDING the pair in `self.memory` across multiple
+    # `wait_tick_and_reobserve()` calls, with the environment's OTHER
+    # physical state (theta, T1, T2 walks, optical chain) continuing to
+    # evolve normally between ticks -- not a single closed-form estimate,
+    # a real multi-step loop a controller can re-predict and re-decide on.
+    # ------------------------------------------------------------------
+
+    def begin_wait_hold(self, f_before: float, depol_prob: float) -> None:
+        """Starts (or continues, if already holding) a WAIT cycle: stores
+        the current pair in `self.memory` for genuine, real-decoherence
+        aging across subsequent `wait_tick_and_reobserve()` calls.
+
+        `f_before` MUST be a real, available pair's fidelity (typically
+        >= this environment's admission threshold, and always > 0 --
+        `channel_available == 0` rounds report F_t=0 by convention, which
+        is NOT a valid Werner-state fidelity to hold; passing it would
+        silently show fidelity INCREASING toward the 0.25 maximally-mixed
+        equilibrium as "decoherence," a real pitfall found while
+        validating this method -- guarded against here defensively)."""
+        assert f_before > 0.0, (
+            "begin_wait_hold() requires a real available pair's fidelity (f_before > 0), "
+            "not an unavailable round's F_t=0 -- there is no pair to hold in that case."
+        )
+        if not self.memory.is_occupied:
+            self.memory.store(initial_fidelity=f_before, depol_prob=depol_prob, sim_time=0.0)
+            self._wait_elapsed_time = 0.0
+
+    def wait_tick_and_reobserve(self) -> dict:
+        """One WAIT tick: advances the environment's physical state by one
+        `storage_time` increment (affecting T1/T2/theta/optical chain
+        exactly as any other round would), ages the HELD pair via real
+        `QuantumMemory` decoherence over the cumulative wait time, and
+        returns a NEW observation -- F_t overridden to reflect the held
+        pair's current (decayed) fidelity, `channel_available` reflecting
+        whether that pair is still meaningfully viable -- so a controller
+        can genuinely re-predict and re-decide (continue WAITing, HALT, or
+        PURIFY) rather than only receiving a single closed-form estimate."""
+        assert self.memory.is_occupied, "Call begin_wait_hold() before wait_tick_and_reobserve()."
+        self._wait_elapsed_time += self.storage_time
+        held_fidelity = self.memory.current_fidelity(sim_time=self._wait_elapsed_time)
+
+        self._advance_physics_one_step()
+        obs = self.observe()
+        obs["F_t"] = held_fidelity
+        obs["channel_available"] = 1.0 if held_fidelity > 1e-6 else 0.0
+        obs["wait_elapsed_time_s"] = self._wait_elapsed_time
+        return obs
+
+    def end_wait_hold(self) -> None:
+        """Releases the held pair -- call this when the controller finally
+        decides HALT or PURIFY instead of continuing to WAIT, or when the
+        pair has decohered past usefulness."""
+        if self.memory.is_occupied:
+            self.memory.clear()
+        self._wait_elapsed_time = 0.0

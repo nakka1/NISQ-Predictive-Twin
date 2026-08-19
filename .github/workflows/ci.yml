@@ -1,0 +1,104 @@
+name: CI
+
+# Master prompt Fase 21: push -> lint -> type check -> unit tests ->
+# integration tests -> physics regression -> small benchmark, with the
+# heavy jobs (physics/integration/benchmark) NOT blocking the fast unit
+# job's own pass/fail signal -- "Os benchmarks completos nao devem
+# bloquear testes rapidos."
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install lint tools
+        run: pip install ruff
+      - name: Ruff lint (non-blocking -- report only)
+        run: ruff check . --exit-zero
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install type-check tools
+        run: pip install mypy
+      - name: Mypy type check (non-blocking; this project predates comprehensive type annotations)
+        run: mypy --ignore-missing-imports . || true
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt --break-system-packages
+      - name: Run unit tests (fast, isolated)
+        run: pytest -m unit -q
+
+  physics-regression:
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt --break-system-packages
+      - name: Run physics validation + regression tests
+        run: pytest -m physics -q
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt --break-system-packages
+      - name: Run integration tests (multi-component, end-to-end)
+        run: pytest -m integration -q
+
+  small-benchmark:
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt --break-system-packages
+      - name: Small Edge AI benchmark smoke test (not the full 500-rep suite)
+        run: |
+          python -c "
+          from run_edge_ai_benchmark import benchmark_inference_latency, FlattenMLP
+          import torch
+          model = FlattenMLP(input_size=16, window_size=20)
+          x = torch.rand(1, 20, 16)
+          result = benchmark_inference_latency(model, x, n_reps=20, n_warmup=5)
+          print('Benchmark smoke test OK:', result)
+          "
+
+  # NOTE: the "slow" marker (multi-seed sweeps, dense parameter grids) is
+  # intentionally NOT run in this CI pipeline at all -- those tests exist
+  # for local/manual validation before a release, not for every push.
+  # Run them explicitly with `pytest -m slow` when needed.

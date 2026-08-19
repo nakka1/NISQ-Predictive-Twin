@@ -119,3 +119,80 @@ def test_observe_before_reset_raises():
     env = QuantumRepeaterEnvironment(config=PhysicsConfig(SEED=9), max_rounds=5)
     with pytest.raises(AssertionError):
         env.observe()
+
+
+def test_wait_hold_cycle_decoheres_monotonically_from_valid_pair():
+    """Regression guard, directly encoding the pitfall found while
+    validating this feature: starting from a REAL available pair's
+    fidelity, repeated wait_tick_and_reobserve() calls must show
+    fidelity monotonically DECREASING (real decoherence), not increasing."""
+    env = QuantumRepeaterEnvironment(config=PhysicsConfig(SEED=42), max_rounds=100)
+    obs = env.reset()
+    done = False
+    while obs is not None and obs.get("channel_available", 0.0) == 0.0 and not done:
+        result = env.step("HALT")
+        done = result["done"]
+        obs = result["next_observation"]
+    assert obs is not None and obs["channel_available"] == 1.0, "No available pair found within 100 rounds."
+
+    env.begin_wait_hold(f_before=obs["F_t"], depol_prob=obs["Depolarization_Level"])
+    fidelities = []
+    for _ in range(5):
+        new_obs = env.wait_tick_and_reobserve()
+        fidelities.append(new_obs["F_t"])
+    env.end_wait_hold()
+
+    for i in range(1, len(fidelities)):
+        assert fidelities[i] <= fidelities[i - 1] + 1e-9, (
+            f"Fidelity increased during WAIT hold: {fidelities}"
+        )
+
+
+def test_begin_wait_hold_rejects_zero_fidelity():
+    """Regression guard for the exact pitfall found during development:
+    f_before=0 (an unavailable round) must be rejected, not silently
+    accepted and shown 'decohering' upward toward the mixed-state floor."""
+    env = QuantumRepeaterEnvironment(config=PhysicsConfig(SEED=1), max_rounds=10)
+    env.reset()
+    with pytest.raises(AssertionError):
+        env.begin_wait_hold(f_before=0.0, depol_prob=0.01)
+
+
+def test_wait_tick_and_reobserve_requires_begin_wait_hold_first():
+    env = QuantumRepeaterEnvironment(config=PhysicsConfig(SEED=2), max_rounds=10)
+    env.reset()
+    with pytest.raises(AssertionError):
+        env.wait_tick_and_reobserve()
+
+
+def test_wait_tick_and_reobserve_advances_elapsed_time():
+    env = QuantumRepeaterEnvironment(config=PhysicsConfig(SEED=3), max_rounds=100)
+    obs = env.reset()
+    done = False
+    while obs is not None and obs.get("channel_available", 0.0) == 0.0 and not done:
+        result = env.step("HALT")
+        done = result["done"]
+        obs = result["next_observation"]
+    assert obs is not None and obs["channel_available"] == 1.0
+
+    env.begin_wait_hold(f_before=obs["F_t"], depol_prob=obs["Depolarization_Level"])
+    obs1 = env.wait_tick_and_reobserve()
+    obs2 = env.wait_tick_and_reobserve()
+    assert obs2["wait_elapsed_time_s"] > obs1["wait_elapsed_time_s"]
+    env.end_wait_hold()
+
+
+def test_end_wait_hold_releases_memory():
+    env = QuantumRepeaterEnvironment(config=PhysicsConfig(SEED=4), max_rounds=100)
+    obs = env.reset()
+    done = False
+    while obs is not None and obs.get("channel_available", 0.0) == 0.0 and not done:
+        result = env.step("HALT")
+        done = result["done"]
+        obs = result["next_observation"]
+    assert obs is not None and obs["channel_available"] == 1.0
+
+    env.begin_wait_hold(f_before=obs["F_t"], depol_prob=obs["Depolarization_Level"])
+    assert env.memory.is_occupied
+    env.end_wait_hold()
+    assert not env.memory.is_occupied
