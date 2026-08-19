@@ -1,0 +1,3 @@
+sha256:2963c895316d115a4f72dee08e66e89d488065f7da53bb79c45b93e499781b6a
+rows:500
+columns:['F_t', 'phase_drift', 'optical_power_dbm', 'osnr_db', 'BER', 'Loss_dB', 'Photon_Rate', 'temperature', 'polarization_drift', 'Distance_km', 'Transmission_Efficiency', 'Latency', 'channel_available', 'T1', 'T2', 'Depolarization_Level']

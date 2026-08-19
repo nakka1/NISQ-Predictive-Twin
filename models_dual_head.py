@@ -173,3 +173,84 @@ def train_dual_head(model: EdgeLSTMDualHead, X_train: torch.Tensor, available_tr
         if verbose and (epoch + 1) % 30 == 0:
             print(f"    Epoch {epoch+1:3d}/{epochs} | DualHeadLoss: {loss.item():.6f}")
     return model
+
+
+def train_dual_head_robust(model: EdgeLSTMDualHead, X_train_full: torch.Tensor,
+                            available_train_full: torch.Tensor, f_train_full: torch.Tensor,
+                            threshold: float = 0.65, lambda_penalty: float = 2.0, lambda_fn: float = 2.0,
+                            max_epochs: int = 400, lr: float = 0.012, batch_size: int = 64,
+                            val_fraction: float = 0.15, patience: int = 25,
+                            device: torch.device = None, verbose: bool = False):
+    """
+    Same mini-batch + temporal-validation-split + early-stopping + LR
+    -scheduling recipe as `models_robust_training.train_edge_lstm_robust`
+    (the twelfth addendum's fix for single-head training instability),
+    applied to `EdgeLSTMDualHead`.
+
+    `train_dual_head` (original, full-batch, fixed-epoch, no validation) is
+    left untouched (Section 27/28: preserve existing functionality) -- this
+    is a parallel, more robust alternative, added because the seventeenth
+    addendum found DualHead already outperforms the robust-trained
+    single-head Predictive WITHOUT this fix, and flagged combining the two
+    as a natural next step to test whether it helps further still.
+
+    Returns (model_with_best_validation_weights_loaded, best_val_loss).
+    """
+    import copy
+
+    if device is not None:
+        model = model.to(device)
+
+    n = len(X_train_full)
+    val_size = max(int(n * val_fraction), 1)
+    train_size = n - val_size
+    X_tr, avail_tr, f_tr = X_train_full[:train_size], available_train_full[:train_size], f_train_full[:train_size]
+    X_val, avail_val, f_val = X_train_full[train_size:], available_train_full[train_size:], f_train_full[train_size:]
+
+    criterion = DualHeadLoss(threshold=threshold, lambda_penalty=lambda_penalty, lambda_fn=lambda_fn)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=8)
+
+    best_val_loss = float("inf")
+    best_state = copy.deepcopy(model.state_dict())
+    epochs_without_improvement = 0
+    n_batches = max(1, train_size // batch_size)
+
+    for epoch in range(max_epochs):
+        model.train()
+        perm = torch.randperm(train_size)
+        for b in range(n_batches):
+            idx = perm[b * batch_size:(b + 1) * batch_size]
+            if len(idx) == 0:
+                continue
+            xb, availb, fb = X_tr[idx], avail_tr[idx], f_tr[idx]
+            optimizer.zero_grad()
+            p_avail, f_hat = model(xb)
+            loss = criterion(p_avail, f_hat, availb, fb, availb)
+            loss.backward()
+            optimizer.step()
+
+        model.eval()
+        with torch.no_grad():
+            p_avail_val, f_hat_val = model(X_val)
+            val_loss = criterion(p_avail_val, f_hat_val, avail_val, f_val, avail_val).item()
+        scheduler.step(val_loss)
+
+        if val_loss < best_val_loss - 1e-6:
+            best_val_loss = val_loss
+            best_state = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        if verbose and (epoch + 1) % 20 == 0:
+            print(f"    Epoch {epoch+1:3d}/{max_epochs} | val_loss={val_loss:.6f} | "
+                  f"best={best_val_loss:.6f} | patience={epochs_without_improvement}/{patience}")
+
+        if epochs_without_improvement >= patience:
+            if verbose:
+                print(f"    Early stopping at epoch {epoch+1} (no improvement for {patience} epochs).")
+            break
+
+    model.load_state_dict(best_state)
+    return model, best_val_loss

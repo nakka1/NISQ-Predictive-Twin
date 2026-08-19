@@ -1,0 +1,17 @@
+Feature,Group,Baseline_MAE,Permuted_MAE,Importance (MAE increase)
+Latency,WDM-observable,0.01847,0.02326,0.00479
+polarization_drift,WDM-observable,0.01847,0.02044,0.00197
+T1,quantum-privileged,0.01847,0.01969,0.00122
+T2,quantum-privileged,0.01847,0.01935,0.00087
+Photon_Rate,WDM-observable,0.01847,0.01884,0.00037
+Transmission_Efficiency,WDM-observable,0.01847,0.01876,0.00028
+channel_available,WDM-observable,0.01847,0.01874,0.00027
+F_t,target,0.01847,0.01863,0.00016
+optical_power_dbm,WDM-observable,0.01847,0.01863,0.00016
+osnr_db,WDM-observable,0.01847,0.01854,7e-05
+temperature,WDM-observable,0.01847,0.01846,-1e-05
+Depolarization_Level,quantum-privileged,0.01847,0.01843,-4e-05
+Distance_km,WDM-observable,0.01847,0.01842,-5e-05
+Loss_dB,WDM-observable,0.01847,0.01841,-6e-05
+phase_drift,WDM-observable,0.01847,0.01814,-0.00033
+BER,WDM-observable,0.01847,0.01796,-0.00051

@@ -1,0 +1,5 @@
+dataset:
+  n_steps: 500
+loss:
+  threshold: 0.65
+seed: 42

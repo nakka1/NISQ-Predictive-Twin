@@ -1,0 +1,6 @@
+Comparison,N,Mean Diff (pp),95% CI Low,95% CI High,Paired t-stat,Paired t p-value,Sign test p-value,Cohen's d,All seeds agree in direction
+DualHead vs. Blind,3,8.65,-1.89,19.18,3.532,0.0717,0.125,2.039,True
+Predictive vs. Blind,3,0.65,-0.72,2.03,2.049,0.177,0.125,1.183,True
+Reactive vs. Blind,3,-0.61,-4.65,3.43,-0.65,0.5824,0.5,-0.375,False
+DualHead vs. Predictive,3,7.99,-3.84,19.82,2.908,0.1007,0.125,1.679,True
+DualHead vs. Reactive,3,9.26,2.67,15.85,6.045,0.0263,0.125,3.49,True

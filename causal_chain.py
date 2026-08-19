@@ -28,6 +28,7 @@ from network_topology import QuantumNode, NetworkLink
 from entanglement_swapping import WernerStateSwapping
 from dataset_v3 import QuantumNetworkDatasetV3
 from models import EdgeLSTM, train_edge_lstm
+from models_robust_training import train_edge_lstm_robust
 
 
 class CausalSwappingChain:
@@ -195,10 +196,11 @@ class MLGatedCausalSwappingChain:
                 df, window_size=window_size, test_size=1.0 - train_fraction)
 
             model = EdgeLSTM(input_size=ds.input_size, hidden_size=hidden_size)
-            model = train_edge_lstm(
+            model, _val_loss = train_edge_lstm_robust(
                 model, X_train, y_train, threshold=fidelity_gate, lambda_penalty=lambda_penalty,
-                lambda_fn=lambda_fn, discard_penalty_weight=discard_penalty_weight, max_discard_rate=max_discard_rate,
-                epochs=epochs, lr=lr, verbose=verbose,
+                lambda_fn=lambda_fn, discard_penalty_weight=discard_penalty_weight,
+                max_discard_rate=max_discard_rate, max_epochs=epochs, lr=lr,
+                batch_size=32, patience=max(epochs // 10, 10), verbose=verbose,
             )
             model.eval()
 

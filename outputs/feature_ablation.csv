@@ -1,0 +1,13 @@
+Feature,Baseline_MAE,Permuted_MAE,Importance (MAE increase)
+phase_drift,0.26338,0.26346,8e-05
+channel_available,0.26338,0.26345,7e-05
+optical_power_dbm,0.26338,0.26342,4e-05
+osnr_db,0.26338,0.26341,3e-05
+temperature,0.26338,0.2634,2e-05
+BER,0.26338,0.26338,-0.0
+Distance_km,0.26338,0.26338,-0.0
+Photon_Rate,0.26338,0.26338,0.0
+Loss_dB,0.26338,0.26337,-1e-05
+Transmission_Efficiency,0.26338,0.26334,-4e-05
+polarization_drift,0.26338,0.26329,-9e-05
+Latency,0.26338,0.26324,-0.00014

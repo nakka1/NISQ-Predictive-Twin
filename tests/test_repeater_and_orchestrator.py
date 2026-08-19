@@ -131,3 +131,53 @@ def test_intelligent_latency_is_measured_and_nonzero():
     y_test = torch.rand(5, 1)
     metrics = orch.run_intelligent(X_test, y_test)
     assert metrics["avg_classical_latency_s"] > 0.0
+
+
+def test_configured_deployment_latency_drives_physics_not_measured_latency():
+    """Master audit Section 23 regression guard: when deployment_latency_s
+    is provided, the physical decoherence must use that CONFIGURED value
+    (identical every step), while measured_inference_latency_s is recorded
+    separately and is free to vary with machine timing noise."""
+    import torch
+    from models import EdgeLSTM
+    from orchestrator import DigitalTwinOrchestrator
+    from repeater import QuantumRepeaterNode
+
+    torch.manual_seed(0)
+    model = EdgeLSTM(input_size=4, hidden_size=8)
+    X_test = torch.rand(5, 5, 4)
+    y_test = torch.rand(5, 1)
+
+    node = QuantumRepeaterNode(shots=32, seed=7)
+    orch = DigitalTwinOrchestrator(model=model, quantum_node=node, threshold=0.0)
+    metrics = orch.run_intelligent(X_test, y_test, deployment_latency_s=500e-6)
+
+    assert metrics["configured_deployment_latency_s"] == 500e-6
+    physical_latencies = [entry["latency_s"] for entry in orch.log]
+    assert all(abs(lat - 500e-6) < 1e-12 for lat in physical_latencies), (
+        "Physical latency must be the CONFIGURED value on every step, not the measured one."
+    )
+    # measured_inference_latency_s must be present and NOT forced to the configured value
+    assert all("measured_inference_latency_s" in entry for entry in orch.log)
+
+
+def test_default_behavior_unchanged_without_deployment_latency():
+    """Backward-compatibility guard: omitting deployment_latency_s must
+    preserve the ORIGINAL behavior exactly (measured tau_inf drives physics)."""
+    import torch
+    from models import EdgeLSTM
+    from orchestrator import DigitalTwinOrchestrator
+    from repeater import QuantumRepeaterNode
+
+    torch.manual_seed(1)
+    model = EdgeLSTM(input_size=4, hidden_size=8)
+    X_test = torch.rand(5, 5, 4)
+    y_test = torch.rand(5, 1)
+
+    node = QuantumRepeaterNode(shots=32, seed=7)
+    orch = DigitalTwinOrchestrator(model=model, quantum_node=node, threshold=0.0)
+    metrics = orch.run_intelligent(X_test, y_test)
+
+    assert metrics["configured_deployment_latency_s"] is None
+    for entry in orch.log:
+        assert entry["latency_s"] == entry["measured_inference_latency_s"]

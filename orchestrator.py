@@ -9,6 +9,20 @@ o profiling de latência isolado já validado:
 
     - run_intelligent      : cronômetra ESTRITAMENTE o forward pass do EdgeLSTM.
     - run_blind_baseline    : NUNCA chama o modelo; latência forçada a 0.0.
+
+MASTER AUDIT SECTION 23 FIX: `run_intelligent` previously used the measured
+wall-clock `tau_inf` (via `time.perf_counter()`) DIRECTLY as the physical
+latency driving quantum-memory decoherence (`apply_latency_decay(tau_inf)`)
+-- a real reproducibility bug (varies by machine load, CPU speed, background
+processes; the exact anti-pattern Section 23 explicitly warns against: "Não
+use diretamente time.perf_counter() como tempo físico do sistema"). Fixed
+via the new `deployment_latency_s` parameter: when provided, the environment
+uses this CONFIGURED, reproducible value for the physics, while the
+measured `tau_inf` is still recorded separately (as `measured_inference_latency_s`
+in the per-step log and `avg_measured_inference_latency_s` in the summary)
+for honest benchmarking. Default (`deployment_latency_s=None`) preserves
+the ORIGINAL behavior exactly (Section 27/28: don't silently change past
+results) -- callers must opt in to the fix.
 """
 
 import time
@@ -33,7 +47,7 @@ class DigitalTwinOrchestrator:
         self.log = []
 
     def run_intelligent(self, X_test: torch.Tensor, y_test: torch.Tensor,
-                         raw_test_rows=None) -> dict:
+                         raw_test_rows=None, deployment_latency_s: float = None) -> dict:
         """
         Laço de simulação com controle de admissão preditivo.
 
@@ -42,6 +56,15 @@ class DigitalTwinOrchestrator:
         fornecido, o QuantumRepeaterNode é alimentado com telemetria real a
         cada passo (update_telemetry / store_pair / record_purification_result),
         mantendo o estado interno do Gêmeo Digital coerente com a simulação.
+
+        `deployment_latency_s`: se fornecido (Seção 23 da auditoria), este
+        valor CONFIGURADO -- não a medição bruta de time.perf_counter() --
+        é o que efetivamente decai a memória quântica
+        (`apply_latency_decay`), garantindo reprodutibilidade entre
+        máquinas/execuções. A latência medida (`tau_inf`) continua sendo
+        registrada separadamente para fins de benchmark honesto. Se `None`
+        (padrão), preserva o comportamento ORIGINAL exatamente (usa
+        `tau_inf` medido como a física, como antes desta correção).
         """
         assert self.model is not None, "run_intelligent requer um modelo treinado."
         self.model.eval()
@@ -68,12 +91,18 @@ class DigitalTwinOrchestrator:
                 if self.device.type == "cuda":
                     torch.cuda.synchronize()
                 tau_inf = time.perf_counter() - t0
-                # --- Fim da janela cronometrada ---
+                # --- Fim da janela cronometrada (medição, apenas para benchmark) ---
+
+                # Física real: usa a latência CONFIGURADA se fornecida
+                # (reprodutível), senão preserva o comportamento antigo
+                # (usa a medição bruta -- não recomendado, mantido por
+                # retrocompatibilidade).
+                physical_latency = deployment_latency_s if deployment_latency_s is not None else tau_inf
 
                 pred_fidelity = float(pred_tensor.item())
                 total_forward_latency += tau_inf
 
-                self.quantum_node.store_pair(tau_inf)
+                self.quantum_node.store_pair(physical_latency)
 
                 if pred_fidelity < self.threshold:
                     halted += 1
@@ -81,11 +110,11 @@ class DigitalTwinOrchestrator:
                     results.append({
                         "step": i, "action": "HALT_PURIFICATION",
                         "pred_fidelity": pred_fidelity, "true_fidelity": true_fidelity,
-                        "latency_s": tau_inf,
+                        "latency_s": physical_latency, "measured_inference_latency_s": tau_inf,
                     })
                     continue
 
-                aged_simulator = self.quantum_node.apply_latency_decay(tau_inf)
+                aged_simulator = self.quantum_node.apply_latency_decay(physical_latency)
                 success_rate, _counts = self.quantum_node.run_purification(simulator=aged_simulator)
 
                 is_useful = (success_rate >= self.success_rate_cutoff) and (true_fidelity >= self.threshold)
@@ -96,8 +125,8 @@ class DigitalTwinOrchestrator:
                 results.append({
                     "step": i, "action": "PURIFY",
                     "pred_fidelity": pred_fidelity, "true_fidelity": true_fidelity,
-                    "latency_s": tau_inf, "purification_success_rate": success_rate,
-                    "useful": is_useful,
+                    "latency_s": physical_latency, "measured_inference_latency_s": tau_inf,
+                    "purification_success_rate": success_rate, "useful": is_useful,
                 })
 
         self.log = results
@@ -108,6 +137,8 @@ class DigitalTwinOrchestrator:
             "halted": halted,
             "attempted": total_steps - halted,
             "avg_classical_latency_s": total_forward_latency / max(total_steps, 1),
+            "avg_measured_inference_latency_s": total_forward_latency / max(total_steps, 1),
+            "configured_deployment_latency_s": deployment_latency_s,
         }
 
     def run_blind_baseline(self, X_test: torch.Tensor, y_test: torch.Tensor,

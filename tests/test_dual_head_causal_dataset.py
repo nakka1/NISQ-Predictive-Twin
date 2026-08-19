@@ -39,6 +39,7 @@ def _prepare_dual_head_data(n_steps=1200, window_size=15, test_size=0.2, seed=42
 
 
 def test_dual_head_trains_without_error_on_causal_dataset():
+    torch.manual_seed(0)
     ds, X_train, y_train, X_test, y_test, avail_train, avail_test = _prepare_dual_head_data()
     model = EdgeLSTMDualHead(input_size=ds.input_size_for("full"), hidden_size=8)
     model = train_dual_head(model, X_train, avail_train, y_train, threshold=0.65,
@@ -56,11 +57,14 @@ def test_dual_head_fidelity_head_beats_trivial_baseline_conditionally():
     """Regression guard for the seventeenth addendum's headline finding:
     conditional MAE must be better than a trivial constant-mean predictor
     on the SAME conditional subset."""
+    torch.manual_seed(42)  # explicit seed -- without this, the test's outcome
+    # depends on prior tests' RNG state (found to cause order-dependent
+    # flakiness: passed in isolation, failed once inside the full suite).
     ds, X_train, y_train, X_test, y_test, avail_train, avail_test = _prepare_dual_head_data(
-        n_steps=2000, window_size=20, test_size=0.2, seed=42)
+        n_steps=3000, window_size=20, test_size=0.2, seed=42)
     model = EdgeLSTMDualHead(input_size=ds.input_size_for("full"), hidden_size=16)
     model = train_dual_head(model, X_train, avail_train, y_train, threshold=0.65,
-                             lambda_penalty=2.0, lambda_fn=2.0, epochs=200, lr=0.012, verbose=False)
+                             lambda_penalty=2.0, lambda_fn=2.0, epochs=250, lr=0.012, verbose=False)
     model.eval()
     with torch.no_grad():
         _p_avail, f_hat = model(X_test)
@@ -82,6 +86,7 @@ def test_dual_head_orchestrator_adapter_produces_valid_admission_control():
     """End-to-end smoke test: DualHeadOrchestratorAdapter must plug into
     DigitalTwinOrchestrator and produce a coherent (non-crashing, sane-shaped)
     admission-control run on the causal dataset."""
+    torch.manual_seed(3)
     ds, X_train, y_train, X_test, y_test, avail_train, avail_test = _prepare_dual_head_data(
         n_steps=1200, window_size=15, test_size=0.2, seed=7)
     model = EdgeLSTMDualHead(input_size=ds.input_size_for("full"), hidden_size=8)
@@ -94,3 +99,40 @@ def test_dual_head_orchestrator_adapter_produces_valid_admission_control():
 
     assert metrics["attempted"] + metrics["halted"] == len(X_test)
     assert 0 <= metrics["useful_pairs"] <= metrics["attempted"]
+
+
+def test_dual_head_robust_trains_without_error_on_causal_dataset():
+    """Regression guard for the eighteenth addendum: the robust trainer
+    variant must produce a valid, well-shaped DualHead model."""
+    torch.manual_seed(4)
+    from models_dual_head import train_dual_head_robust
+
+    ds, X_train, y_train, X_test, y_test, avail_train, avail_test = _prepare_dual_head_data()
+    model = EdgeLSTMDualHead(input_size=ds.input_size_for("full"), hidden_size=8)
+    model, val_loss = train_dual_head_robust(model, X_train, avail_train, y_train, threshold=0.65,
+                                              lambda_penalty=2.0, lambda_fn=2.0, max_epochs=100,
+                                              batch_size=32, patience=15, verbose=False)
+    model.eval()
+    with torch.no_grad():
+        p_avail, f_hat = model(X_test)
+    assert p_avail.shape == y_test.shape
+    assert f_hat.shape == y_test.shape
+    assert np.isfinite(val_loss)
+
+
+def test_dual_head_robust_uses_temporal_validation_not_full_batch():
+    """The robust trainer must actually use a validation split distinct
+    from train_dual_head's full-batch behavior -- verified by confirming
+    training completes with a val_fraction that leaves a meaningfully
+    smaller effective training set (smoke-level structural check)."""
+    torch.manual_seed(5)
+    from models_dual_head import train_dual_head_robust
+
+    ds, X_train, y_train, X_test, y_test, avail_train, avail_test = _prepare_dual_head_data(
+        n_steps=800, window_size=15, test_size=0.2, seed=1)
+    model = EdgeLSTMDualHead(input_size=ds.input_size_for("full"), hidden_size=8)
+    trained_model, val_loss = train_dual_head_robust(
+        model, X_train, avail_train, y_train, threshold=0.65, val_fraction=0.3,
+        max_epochs=50, batch_size=16, patience=10)
+    assert trained_model is not None
+    assert val_loss >= 0.0

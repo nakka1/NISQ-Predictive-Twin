@@ -38,6 +38,18 @@ quantum_node:
   shots: 512
   seed: 7
 
+# Master audit Section 23: the PHYSICAL environment (quantum-memory
+# decoherence during the classical decision window) must use a CONFIGURED,
+# reproducible latency budget -- never a raw time.perf_counter() wall-clock
+# measurement, which varies with machine load/CPU speed and is therefore
+# NOT reproducible across runs/machines. The benchmark (measured_inference_latency_s,
+# reported separately by orchestrator.run_intelligent) is kept distinct from
+# this configured value; see orchestrator.py's `use_configured_latency` parameter.
+deployment:
+  inference_latency_us: 500.0       # classical EdgeLSTM forward-pass budget on target edge hardware
+  communication_latency_us: 100.0   # classical control-plane messaging (e.g. repeater <-> controller)
+  controller_latency_us: 50.0       # admission-control decision-logic overhead
+
 output:
   model_path: "outputs/edge_lstm_experiment2.pt"
   plots_dir: "outputs/plots"
