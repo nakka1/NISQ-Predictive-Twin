@@ -1,0 +1,5 @@
+Condition,MAE,RMSE,R2,"MI(pred,true)",Delta_MAE_vs_real,Delta_RMSE_vs_real,Delta_R2_vs_real,Delta_MI_vs_real
+WDM real (baseline),0.01847,0.03503,0.1807,0.47888,0.0,0.0,0.0,0.0
+WDM shuffled,0.02552,0.03986,-0.0606,0.07048,0.00704,0.00482,-0.2412,-0.4084
+WDM temporally shifted,0.02641,0.04166,-0.1589,0.06371,0.00793,0.00663,-0.3396,-0.41518
+WDM removed,0.07974,0.08355,-3.661,0.15063,0.06127,0.04852,-3.8417,-0.32825

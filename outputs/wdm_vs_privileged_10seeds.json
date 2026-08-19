@@ -1,0 +1,62 @@
+[
+  {
+    "seed": 42,
+    "mae_a_wdm_only": 0.017524,
+    "mae_c_privileged_only": 0.020352,
+    "mae_e_full_oracle": 0.018471
+  },
+  {
+    "seed": 123,
+    "mae_a_wdm_only": 0.018179,
+    "mae_c_privileged_only": 0.021424,
+    "mae_e_full_oracle": 0.020893
+  },
+  {
+    "seed": 7,
+    "mae_a_wdm_only": 0.024066,
+    "mae_c_privileged_only": 0.023247,
+    "mae_e_full_oracle": 0.021947
+  },
+  {
+    "seed": 2024,
+    "mae_a_wdm_only": 0.0126,
+    "mae_c_privileged_only": 0.019321,
+    "mae_e_full_oracle": 0.012426
+  },
+  {
+    "seed": 31415,
+    "mae_a_wdm_only": 0.023612,
+    "mae_c_privileged_only": 0.025291,
+    "mae_e_full_oracle": 0.023958
+  },
+  {
+    "seed": 99,
+    "mae_a_wdm_only": 0.015031,
+    "mae_c_privileged_only": 0.020726,
+    "mae_e_full_oracle": 0.018401
+  },
+  {
+    "seed": 555,
+    "mae_a_wdm_only": 0.015237,
+    "mae_c_privileged_only": 0.018824,
+    "mae_e_full_oracle": 0.014507
+  },
+  {
+    "seed": 8080,
+    "mae_a_wdm_only": 0.011209,
+    "mae_c_privileged_only": 0.019226,
+    "mae_e_full_oracle": 0.018694
+  },
+  {
+    "seed": 271828,
+    "mae_a_wdm_only": 0.02458,
+    "mae_c_privileged_only": 0.02321,
+    "mae_e_full_oracle": 0.018704
+  },
+  {
+    "seed": 16180,
+    "mae_a_wdm_only": 0.017048,
+    "mae_c_privileged_only": 0.019594,
+    "mae_e_full_oracle": 0.017244
+  }
+]

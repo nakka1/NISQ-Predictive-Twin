@@ -1,0 +1,6 @@
+Model,N_Features,Conditional_MAE,Naive_Conditional_MAE,Conditional_Improvement_pct,Availability_Corr,QPU_Yield_pct,Attempted
+A: WDM only,12,0.01752,0.0218,19.62,-0.0283,39.41,543
+B: WDM + T1 + T2,14,0.01499,0.0218,31.22,-0.0264,51.45,344
+C: T1 + T2 only,2,0.02035,0.0218,6.64,0.0458,37.05,583
+D: Fidelity history only,1,0.02117,0.0218,2.88,0.0101,34.04,188
+E: Privileged/oracle (full),16,0.01847,0.0218,15.27,-0.0228,61.15,157

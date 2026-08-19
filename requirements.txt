@@ -8,3 +8,9 @@ pyyaml
 matplotlib
 xgboost>=2.0  # opcional: baselines.py cai para GradientBoostingRegressor se ausente
 pytest>=7.0
+statsmodels>=0.14  # Granger causality (run_causal_analysis.py, Fase 12 do prompt mestre v3 --
+                    # a alternativa seria reimplementar o teste F de Granger manualmente, o
+                    # que reintroduziria risco de bug numa area estatisticamente sensivel)
+pyinform>=0.2       # Transfer entropy (run_causal_analysis.py) -- biblioteca padrao e bem
+                    # estabelecida para essa metrica especifica; nao ha alternativa razoavel
+                    # ja presente no projeto

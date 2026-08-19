@@ -28,7 +28,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from dataset import QuantumNetworkDataset
+from legacy.dataset import QuantumNetworkDataset
 from models import EdgeLSTM, train_edge_lstm
 from repeater import QuantumRepeaterNode
 from orchestrator import DigitalTwinOrchestrator

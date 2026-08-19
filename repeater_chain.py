@@ -27,7 +27,7 @@ import time
 
 import torch
 
-from dataset import QuantumNetworkDataset
+from legacy.dataset import QuantumNetworkDataset
 from repeater import QuantumRepeaterNode
 
 
