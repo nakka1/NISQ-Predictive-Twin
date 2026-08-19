@@ -244,7 +244,7 @@ python run_closed_loop_demo.py --config config.yaml
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+Apache — see [`LICENSE`](LICENSE).
 
 ## Topics
 
