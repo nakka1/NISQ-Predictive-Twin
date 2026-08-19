@@ -1,5 +1,7 @@
 # Quantum Repeater Digital Twin
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A research-grade digital twin of a quantum repeater node, driven by
 **WDM-observable classical telemetry** to predict quantum-state fidelity
 and make real-time admission-control decisions — combining causal
@@ -240,6 +242,10 @@ pytest -m unit -q         # fast subset only
 python run_closed_loop_demo.py --config config.yaml
 ```
 
+## License
+
+MIT — see [`LICENSE`](LICENSE).
+
 ## Topics
 
 `quantum-computing` `quantum-networks` `quantum-repeater` `digital-twin`
@@ -249,5 +255,5 @@ python run_closed_loop_demo.py --config config.yaml
 ---
 
 **For the complete, unabridged development history** — every one of the
-43 addenda, every bug found and fixed with its full investigation, every
+45 addenda, every bug found and fixed with its full investigation, every
 honestly-reported negative result — see [`docs/history.md`](docs/history.md).
