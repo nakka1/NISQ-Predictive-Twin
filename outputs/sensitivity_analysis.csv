@@ -1,0 +1,9 @@
+Variable,Dimension,Delta_X,Delta_F,Sensitivity_S_X
+phase_drift,conditional_fidelity,0.05,0.0,0.0
+loss_db,conditional_fidelity,1.0,0.0,0.0
+osnr_db,conditional_fidelity,-1.0,0.0,-0.0
+optical_power_dbm,conditional_fidelity,-1.0,0.0,-0.0
+BER,conditional_fidelity,0.0005,-0.006189,-12.3777
+loss_db,availability,1.0,-0.12977,-0.12977
+photon_rate,conditional_fidelity,,0.0,0.0
+Transmission_Efficiency,conditional_fidelity,,0.0,0.0

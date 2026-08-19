@@ -1,0 +1,36 @@
+{
+  "phase_reached": "test",
+  "is_frozen": true,
+  "split_sizes": {
+    "train": 2200,
+    "validation": 600,
+    "calibration": 600,
+    "test": 600
+  },
+  "split_fractions": {
+    "train": 0.55,
+    "validation": 0.15,
+    "calibration": 0.15,
+    "test": 0.15
+  },
+  "decisions_log": [
+    {
+      "parameter": "admission_threshold",
+      "value": 0.65,
+      "phase": "validation",
+      "rationale": "minimizes conditional MAE on VALIDATION split (0.01730)"
+    },
+    {
+      "parameter": "calibration_note",
+      "value": "reserved for Conformal Prediction alpha / temperature scaling",
+      "phase": "calibration",
+      "rationale": "600 rows reserved, not consumed by this demo's threshold choice"
+    },
+    {
+      "parameter": "final_test_MAE",
+      "value": 0.01615,
+      "phase": "test_evaluation",
+      "rationale": "ONE-TIME final evaluation, frozen threshold, never re-tuned"
+    }
+  ]
+}

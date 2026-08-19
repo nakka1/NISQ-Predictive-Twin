@@ -67,3 +67,17 @@ being named. Every number in `README.md` and `docs/` traces back to a
 specific script and a specific run; see `docs/history.md` for the full,
 unabridged account of what was actually measured, including every
 negative result.
+
+## Physical generalization has NOT been established (domain shift)
+
+`run_domain_shift_experiment.py` (zero-shot, no retraining/fine-tuning)
+found the model's OOD behavior is regime-specific and in some cases
+counter-intuitive: excluding T1/T2 from inputs made T1/T2-shift
+generalization WORSE (the underlying F(t) distribution itself shifts,
+which WDM-only features cannot fully anticipate), but made
+distance-shift generalization BETTER (the full-feature model over-relies
+on T1/T2 in a way that transfers poorly to a new distance/loss profile).
+A methodological confound (MinMaxScaler producing out-of-[0,1]-range
+inputs under a T1/T2 shift) was found and explicitly disentangled before
+drawing conclusions — see `docs/history.md`'s forty-ninth addendum for
+the full investigation. **No claim of physical generalization is made.**

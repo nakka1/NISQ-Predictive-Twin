@@ -1,0 +1,11 @@
+Variable,Delta,Magnitude,Baseline_Value,Intervened_Value,Baseline_Fidelity,Intervened_Fidelity,Delta_Fidelity,Evidence_Level
+phase_drift,0.5,small (below the pi/2 interference threshold),0.0,0.5,0.6714,0.6714,0.0,physical_causal_hypothesis
+phase_drift,1.57,large (near the pi/2 interference singularity),0.0,1.57,0.6714,0.36597,-0.30543,physical_causal_hypothesis
+loss_db,5.0,small,2.0,7.0,0.6714,0.6714,0.0,physical_causal_hypothesis
+loss_db,30.0,large (brings OSNR into its sensitive ~8dB range),2.0,32.0,0.6714,0.66903,-0.00237,physical_causal_hypothesis
+osnr_db,-5.0,small,38.0,33.0,0.6714,0.6714,0.0,physical_causal_hypothesis
+osnr_db,-32.0,"large (brings OSNR to ~6dB, near the BER waterfall knee)",38.0,6.0,0.6714,0.64226,-0.02914,physical_causal_hypothesis
+optical_power_dbm,-5.0,small,-2.0,-7.0,0.6714,0.6714,0.0,physical_causal_hypothesis
+optical_power_dbm,-30.0,large (equivalent OSNR effect to the loss/OSNR cases),-2.0,-32.0,0.6714,0.66903,-0.00237,physical_causal_hypothesis
+BER,0.001,small,0.0,0.001,0.6714,0.65907,-0.01233,physical_causal_hypothesis
+BER,0.05,large (saturates depol_effective at its 0.5 ceiling),0.0,0.05,0.6714,0.36597,-0.30543,physical_causal_hypothesis

@@ -50,3 +50,27 @@ pytest -m slow               # heavier tests, excluded from CI by default
 pip install -r requirements.txt
 pytest                    # 291 tests, ~4 minutes
 ```
+
+## Enforced train/validation/calibration/test protocol
+
+`model_selection_protocol.py`'s `ModelSelectionProtocol` makes "don't
+tune on the test set" a runtime-ENFORCED rule, not just a documented
+convention: `get_test_data()` raises `ProtocolViolationError` if called
+before `freeze()`. Every tuning decision (threshold, hyperparameter,
+etc.) is logged with the phase it was made in, producing a manifest that
+proves no parameter was selected using test-set information. See
+`run_model_selection_protocol_demo.py` for a full real-data
+demonstration (threshold selected on VALIDATION only, TEST evaluated
+exactly once after freezing).
+
+## Automated temporal leakage audit
+
+`temporal_leakage_audit.py` provides composable checks for future
+leakage, overlapping target leakage, normalization leakage, and split
+leakage, applied to the real production pipeline in
+`tests/test_temporal_leakage_audit.py`. Several tests deliberately
+introduce a broken/leaky variant to verify the checks have genuine
+detection power (not just always passing) — a real false positive found
+during development (an F_t=0.0 value collision at the split boundary,
+expected given F_t=0.0's ~36% base rate in this dataset, not an actual
+bug) is documented and guarded against explicitly.

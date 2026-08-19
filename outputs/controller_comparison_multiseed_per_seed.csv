@@ -1,6 +1,6 @@
 Controller,Seed,Useful Pairs,Useful Pair Rate (%)
-Blind,7,314,39.45
-Reactive,7,201,39.49
-Predictive,7,302,40.0
-Oracle,7,314,100.0
-DualHead,7,279,50.54
+Blind,999,349,43.84
+Reactive,999,219,44.42
+Predictive,999,339,45.08
+Oracle,999,349,100.0
+DualHead,999,332,49.63

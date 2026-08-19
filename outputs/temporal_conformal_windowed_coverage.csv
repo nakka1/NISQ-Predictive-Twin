@@ -1,0 +1,11 @@
+Method,Window,N,Coverage_pct,Mean_Width
+Standard Conformal,0,159,88.68,0.99957
+Standard Conformal,1,159,86.79,0.99959
+Standard Conformal,2,159,87.42,0.9995
+Standard Conformal,3,159,83.02,0.99947
+Standard Conformal,4,160,83.12,0.99959
+Adaptive Conformal (ACI),0,159,88.68,0.99947
+Adaptive Conformal (ACI),1,159,89.94,0.9997
+Adaptive Conformal (ACI),2,159,86.16,0.99961
+Adaptive Conformal (ACI),3,159,88.68,0.99962
+Adaptive Conformal (ACI),4,160,86.25,0.99981
