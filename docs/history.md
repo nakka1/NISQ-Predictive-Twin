@@ -1,7 +1,7 @@
 # Full Addenda History
 
 This file preserves the complete, chronological addendum-by-addendum
-development history of this project (70 addenda, spanning the original
+development history of this project (74 addenda, spanning the original
 causal-rewrite audit through the 24-phase architectural overhaul) --
 every honest finding, every bug found and fixed, every negative result,
 exactly as it was recorded when written. **This is the authoritative
@@ -5164,3 +5164,297 @@ scope, honestly flagged as such in each addendum's own "Honest
 limitations" section). **443 tests passing, 70 chronological addenda,
 every bug found and fixed, every negative result reported, every
 limitation stated explicitly.**
+
+---
+
+## Seventy-first addendum: master prompt v5, Secao 10 -- multiple comparisons correction (Holm-Bonferroni + Benjamini-Hochberg)
+
+First addendum under a new master prompt (v5, 40 sections, explicit
+"BEFORE/AFTER" discipline). Baseline BEFORE was formally recorded
+(`BASELINE_BEFORE.md`) before any change: 443 tests passing (179 unit /
+157 physics / 70 integration / 28 statistical / 9 benchmark, partitioning
+exactly), no deprecation warnings, environment/dependency versions
+logged.
+
+### The gap fixed
+
+This project has run many statistical tests across 70 prior addenda,
+often reporting SEVERAL related p-values side by side (e.g. the
+forty-sixth addendum's three pairwise DualHead-vs-{Blind,Reactive,
+Predictive} comparisons) -- but never applied a multiple-comparisons
+correction, despite the master prompt's explicit "Não apresentar
+dezenas de p-values sem correção."
+
+### Verified against a trusted reference before trusting the implementation
+
+`multiple_comparisons.py` implements BOTH named methods (Holm-Bonferroni,
+Benjamini-Hochberg) from scratch, but neither was trusted on the basis
+of a hand-derived formula alone: both were cross-checked directly
+against `statsmodels.stats.multitest.multipletests()` (the standard
+reference implementation) on the same test p-values, confirming
+`np.allclose()` agreement before writing a single test.
+
+### Real application: the forty-sixth addendum's finding survives correction
+
+```
+                 label  raw_p  adjusted_p (Holm)  adjusted_p (BH)
+     DualHead vs Blind 0.0001              0.0003            0.0003
+  DualHead vs Reactive 0.0003              0.0004            0.0003
+DualHead vs Predictive 0.0002              0.0004            0.0003
+```
+
+All three comparisons remain significant at alpha=0.05 under BOTH the
+more conservative (Holm-Bonferroni, family-wise error rate) and less
+conservative (Benjamini-Hochberg, false discovery rate) corrections --
+the original raw p-values (0.0001-0.0003) were small enough that this
+project's central controller-comparison finding was never actually an
+artifact of uncorrected multiple testing, now CONFIRMED rather than assumed.
+
+### 8 new tests, all passing (0.48s total -- including direct
+verification against statsmodels' reference implementation, not just
+internal self-consistency checks). **Total project test suite: 451
+tests, all passing** (regression run immediately after this change,
+per the master prompt's explicit incremental-change discipline).
+
+### Honest limitations
+- Only ONE existing result (the forty-sixth addendum's 3-way pairwise
+  comparison) was retroactively corrected in this pass -- this
+  project's OTHER multi-p-value results (e.g. the WDM-vs-privileged
+  10-seed campaign's own statistics, if it reports multiple related
+  tests) were not systematically re-audited and corrected in this
+  addendum; the infrastructure now exists for future application.
+- This is the FIRST addendum of a new, much larger master prompt (v5,
+  40 sections) -- the vast majority of that prompt's scope (domain
+  shift with Ornstein-Uhlenbeck parameter variation, formal metadata
+  registration, QuantumRuntimeProfiler, and many other sections) remains
+  unaddressed in this pass, stated honestly in `BASELINE_BEFORE.md`
+  rather than claimed as complete.
+
+---
+
+## Seventy-second addendum: master prompt v5, Secoes 11 + 12 -- four-way split leakage audit + cost-weight/conformal-calibration TEST-blocking demonstrations
+
+Continues the new master prompt (v5) per its own stated priority order
+(ETAPA 1: Train/Validation/Calibration/Test; ETAPA 2: Leakage audit).
+Both had substantial infrastructure already (`model_selection_protocol.py`,
+forty-seventh addendum; `temporal_leakage_audit.py`, forty-eighth
+addendum) -- this addendum closes two SPECIFIC, concrete gaps this new
+prompt's expanded text calls out that the existing infrastructure had
+never explicitly demonstrated.
+
+### A real tautology bug found and fixed WHILE building the fix (not shipped)
+
+The first draft of `check_four_way_split_temporal_ordering()` checked
+only the four split blocks' own (`.reset_index(drop=True)`-affected)
+lengths and index arithmetic -- which, given `make_four_way_split()`
+always resets each block's index to start at 0, meant the check's
+`train_end <= val_start` (etc.) conditions were TAUTOLOGICALLY true by
+construction, incapable of ever failing regardless of whether the
+SOURCE data was genuinely chronologically ordered before splitting.
+Caught before writing any test (by direct inspection of
+`make_four_way_split()`'s actual `reset_index` call), fixed by requiring
+a `reference_column` argument and checking real VALUE relationships
+(`max(train[col]) <= min(validation[col])`, etc.) instead of index
+arithmetic -- verified to genuinely catch a real corruption case
+(a shuffled source DataFrame) that the tautological version would have
+silently passed, via a dedicated regression test
+(`test_four_way_split_temporal_ordering_detects_shuffled_source_data`).
+
+### Cost-weight and conformal-calibration TEST-blocking demonstrated directly
+
+The master prompt's expanded prohibited-on-TEST list explicitly adds
+"cost weights" and "conformal calibration" to the previously-demonstrated
+thresholds/hyperparameters. Three new tests demonstrate these concretely
+using the EXISTING `ModelSelectionProtocol` enforcement mechanism (no new
+enforcement code needed -- the forty-seventh addendum's `freeze()`/
+`log_decision()` machinery already generalizes to any parameter type):
+attempting to re-tune `C_QPU`/`C_fidelity` after freeze fails; attempting
+to re-tune Conformal Prediction's `alpha` after freeze fails; and a real
+`ConformalPredictor.calibrate()` call is demonstrated using ONLY
+`protocol.get_calibration_data()`, with `get_test_data()` verified to
+still raise `ProtocolViolationError` at that point in the flow, before
+`freeze()`.
+
+### 6 new tests, all passing (13 for the leakage audit including a real
+found-and-fixed tautology bug guarded against explicitly; 3 for cost
+-weight/conformal-calibration TEST-blocking). Regression run immediately
+after, per the master prompt's explicit incremental-change discipline:
+**total project test suite: 457 tests, all passing** (451 + 6 new).
+
+### Honest limitations
+- The four-way ordering check requires an explicit `reference_column`
+  argument -- it cannot automatically detect which column (if any) is a
+  valid chronological reference in an arbitrary DataFrame; callers must
+  know and supply one, same as this project's own tests do (a
+  `_row_order` column derived from `range(len(df))`, or a synthetic
+  `value` column).
+- Cost-weight/conformal-calibration blocking was demonstrated with
+  representative, illustrative examples (RiskAwareController's C_QPU/
+  C_fidelity, Conformal Prediction's alpha) -- not exhaustively applied
+  to every tunable parameter across every controller/uncertainty method
+  in this project.
+
+---
+
+## Seventy-third addendum: master prompt v5, Secao 9 -- SeedRegistry + RiskAware 10-seed campaign (three real bugs found and fixed before reporting anything)
+
+`seed_registry.py` implements the exact requested `SeedRegistry`
+(experiment_id, seed, timestamp, git_commit, config_hash, dataset_hash
+per execution), with `verify_seeds_unique()` catching an accidental
+re-run of the same seed. Applied to close the clearest gap identified in
+`BASELINE_BEFORE.md`: RiskAwareController never had a genuine, dedicated
+10-seed performance campaign comparable to the forty-sixth addendum's
+Blind/Reactive/Predictive/DualHead/Oracle campaign.
+
+### Three real methodological bugs found and fixed in sequence, before reporting any result -- the central story of this addendum
+
+**Bug 1 (wrong denominator)**: the first draft computed yield as
+`n_useful / n_available_rounds`, but the established convention
+(`run_controller()`/`orchestrator.py`) divides by `attempted` (PURIFY
+count specifically). Caught by comparing against
+`run_controller_comparison_multiseed.py`'s own source before trusting
+any number.
+
+**Bug 2 (wrong "useful" definition)**: the first draft defined "useful"
+as merely `true_fidelity >= threshold`, but the real convention requires
+`(success_rate >= cutoff) AND (true_fidelity >= threshold)`, where
+`success_rate` comes from a REAL simulated `QuantumRepeaterNode.run_purification()`
+call. Caught by reading `orchestrator.py`'s actual `run_intelligent()`
+source directly.
+
+**Bug 3 (pre-filtered by availability -- the consequential one)**: the
+first (and second) draft pre-filtered to `avail_mask = true_f > 0`
+BEFORE simulating, excluding the ~36% of rounds with no available pair
+entirely from the denominator. But `run_blind_baseline()`/`run_controller()`
+run over the FULL, unfiltered test set, correctly counting unavailable
+rounds as "attempted but not useful" when a controller chooses to
+purify on them. This bug alone inflated the initial (wrong) result from
+a genuine ~42.65% to a misleading ~66.66% -- a difference large enough
+to completely invert the finding's DIRECTION (from "loses to DualHead"
+to "beats DualHead by 16pp"). Caught by investigating WHY a
+surprising +16.18pp "RiskAware beats DualHead" result seemed
+inconsistent with RiskAware's own documented always-PURIFY collapse
+(thirty-sixth/fifty-eighth/sixty-eighth addenda) -- the surprising
+DIRECTION of the initial result was itself the signal that something
+was wrong, not confirmation of a new finding.
+
+### The corrected, final, honest result: RiskAware collapses to Blind-equivalent behavior -- a fourth independent confirmation
+
+```
+Controller  N_Seeds   Mean   Std  Median  CI95_low  CI95_high   Min    Max
+ RiskAware       10 42.651 5.877  43.090    38.447     46.855 31.030 49.623
+
+RiskAware vs. Blind (same 10 seeds): mean difference = 0.00075pp (max |diff| = 0.0035pp)
+  -- statistically indistinguishable, both purify on literally every round.
+RiskAware vs. DualHead (same 10 seeds): mean difference = -7.821pp, paired t p=0.00013
+  -- RiskAware LOSES to DualHead in all 10 seeds.
+```
+
+Every one of the 10 seeds shows `attempted=796` (the FULL test set size)
+and `halted=0` -- RiskAwareController purifies on literally every single
+round, with no exception, across the entire campaign. This is now the
+FOURTH independent confirmation (after the thirty-sixth, fifty-eighth,
+and sixty-eighth addenda, each via a different mechanism) of the same
+structural finding: under honestly-calibrated (temperature-scaled,
+appropriately wide) uncertainty, `RiskAwareController` collapses to
+Blind-equivalent always-PURIFY behavior. This 10-seed campaign is the
+FIRST to demonstrate this with full statistical rigor (mean/std/median/
+95% CI across genuinely independent seeds) rather than a single run or
+qualitative observation.
+
+### 12 new tests, all passing (8 for SeedRegistry; 4 for
+run_risk_aware_10seed_campaign.py, each DIRECTLY guarding against one of
+the three bugs found above, not just testing the final correct
+behavior). Regression run immediately after: **total project test
+suite: 469 tests, all passing** (457 + 12 new).
+
+### This addendum's own methodological discipline, stated explicitly
+
+This is exactly the failure mode the master prompt's own priority order
+("VALIDADE CIENTIFICA > ... > EFICIENCIA COMPUTACIONAL") is designed to
+prevent: a surprising, favorable-looking result (+16.18pp "RiskAware
+beats DualHead") was NOT reported on the strength of its own statistical
+significance (p<0.0001, Cohen's d=2.6) alone -- it was investigated
+BECAUSE it contradicted three prior addenda's independent findings, and
+found to rest on three real implementation bugs. The final, honest,
+LESS favorable-looking result (RiskAware loses to DualHead) is the
+scientifically valid one.
+
+### Honest limitations
+- Only RiskAware's YIELD was campaigned across 10 seeds in this pass --
+  EdgeLSTM/EdgeGRU/EdgeTCN (also named in Secao 9's list) still lack a
+  dedicated 10-seed PREDICTIVE-ACCURACY campaign (only single-seed
+  benchmarks exist for latency/memory/Pareto-frontier work).
+- The `success_rate_cutoff=0.5` and `forced_latency=0.0` conventions
+  were matched to `run_blind_baseline()` exactly, but were not
+  independently re-derived or questioned -- inherited as-is from
+  existing, already-validated code.
+
+---
+
+## Seventy-fourth addendum: master prompt v5, Secao 9 -- EdgeLSTM/EdgeGRU/EdgeTCN 10-seed accuracy campaign (with a real, statistically-confirmed outlier)
+
+Closes the last remaining gap flagged in the seventy-third addendum's
+honest limitations: EdgeLSTM/EdgeGRU/EdgeTCN never had a dedicated
+10-seed PREDICTIVE-ACCURACY campaign. `run_architecture_10seed_campaign.py`
+trains each architecture fresh across the SAME 10 seeds used throughout
+this project's other multi-seed campaigns, reporting MAE mean/std/
+median/95% CI, with Holm-Bonferroni and Benjamini-Hochberg correction
+applied to the pairwise comparisons (reusing `multiple_comparisons.py`,
+seventy-first addendum).
+
+### Result
+
+```
+Architecture  N_Seeds  Mean_MAE     Std  Median_MAE  CI95_low  CI95_high
+    EdgeLSTM       10   0.26333 0.01766     0.26984   0.25069    0.27596
+     EdgeGRU       10   0.32624 0.05179     0.32092   0.28919    0.36329
+     EdgeTCN       10   0.54746 0.10510     0.57505   0.47228    0.62265
+
+Pairwise (Holm-Bonferroni corrected):
+  EdgeLSTM vs EdgeGRU: raw_p=0.0128, adjusted_p=0.0128, significant
+  EdgeLSTM vs EdgeTCN: raw_p=0.00001, adjusted_p=0.00003, significant
+  EdgeGRU vs EdgeTCN:  raw_p=0.00027, adjusted_p=0.00053, significant
+```
+
+All three pairwise architecture differences remain significant after
+correction -- EdgeLSTM's real accuracy advantage over EdgeGRU/EdgeTCN is
+not an artifact of uncorrected multiple testing.
+
+### A real, statistically-confirmed outlier -- strengthening (not just repeating) an earlier hypothesis
+
+EdgeTCN's `seed=2024` result (MAE=0.25134) stands dramatically apart
+from its other 9 seeds (all in the 0.56-0.61 range) -- excluding it,
+EdgeTCN's std collapses from 0.10510 to 0.01571 (nearly 7x smaller), and
+the outlier itself sits 2.82 standard deviations from the remaining
+9-seed mean, a genuine statistical outlier by any conventional
+threshold, not ordinary variance. This provides REAL, multi-seed
+statistical evidence for the hypothesis the forty-third addendum could
+only speculate about ("EdgeTCN's notably worse MAE ... is very plausibly
+a training-hyperparameter artifact ... not independently re-tuned for
+TCN specifically") -- one specific seed managed to escape whatever
+training instability afflicts the other 9, which is exactly the
+signature a hyperparameter-sensitivity problem (rather than a
+fundamental architectural limitation) would produce.
+
+### 5 new tests, all passing (2.25s total -- including a direct
+regression guard reproducing the real outlier's z-score calculation on
+the actual recorded MAE values, not synthetic data). Regression run
+immediately after: **total project test suite: 474 tests, all passing**
+(469 + 5 new).
+
+### Honest limitations
+- The EdgeTCN outlier's ROOT CAUSE (which specific hyperparameter or
+  initialization condition let seed=2024 escape the instability) was
+  NOT investigated further in this pass -- flagged as a concrete,
+  well-motivated follow-up, not resolved here.
+- All three architectures used the SAME training hyperparameters
+  (epochs=150, lr=0.018, from `train_edge_lstm`'s robust trainer) --
+  consistent with every prior addendum's convention, but this campaign
+  does not itself re-tune per-architecture hyperparameters, so it cannot
+  distinguish "EdgeTCN is architecturally worse" from "EdgeTCN needs
+  different hyperparameters than EdgeLSTM/EdgeGRU do."
+- Single dataset realization per seed (no separate train/test
+  regeneration beyond what each seed's own `PhysicsConfig(SEED=seed)`
+  produces) -- consistent with this project's established convention
+  throughout.

@@ -89,6 +89,54 @@ def check_train_test_target_temporal_ordering(y_train_last_idx: int, y_test_firs
     return AuditResult("split_leakage_target_ordering", passed, detail)
 
 
+def check_four_way_split_temporal_ordering(split, reference_column: str) -> AuditResult:
+    """
+    Master prompt v5, Secao 12: "Em separacao temporal: train < validation
+    < calibration < test." Extends the two-way ordering check above to
+    the FULL four-way split introduced by `model_selection_protocol.FourWaySplit`
+    (forty-seventh addendum) -- a genuine gap this check closes: the
+    original temporal_leakage_audit.py (forty-eighth addendum) predates
+    the four-way split's calibration stage and never verified it.
+
+    IMPORTANT: `make_four_way_split()` calls `.reset_index(drop=True)` on
+    each of the four output blocks, so the blocks' own pandas index
+    CANNOT be used to verify cross-block ordering (a naive "check each
+    block's index range" approach would be tautological -- it would
+    ALWAYS pass by construction, never catching a genuine leakage bug
+    such as the source DataFrame having been shuffled before splitting).
+    Instead, this check requires a `reference_column` that is expected to
+    be monotonically non-decreasing across the ORIGINAL chronological
+    order (e.g. a row-order-derived value, a timestamp, or any feature
+    known to increase with time) -- and verifies
+    max(train[col]) <= min(validation[col]) <= ... across all four blocks
+    using the ACTUAL DATA VALUES, which genuinely can fail if the blocks
+    were built from improperly-ordered source data.
+    """
+    train_max = split.train[reference_column].max()
+    val_min = split.validation[reference_column].min()
+    val_max = split.validation[reference_column].max()
+    cal_min = split.calibration[reference_column].min()
+    cal_max = split.calibration[reference_column].max()
+    test_min = split.test[reference_column].min()
+
+    checks = [
+        ("train_before_validation", train_max <= val_min),
+        ("validation_before_calibration", val_max <= cal_min),
+        ("calibration_before_test", cal_max <= test_min),
+    ]
+    failed = [name for name, ok in checks if not ok]
+    passed = len(failed) == 0
+
+    detail = (
+        f"Four-way split is properly ordered on '{reference_column}': "
+        f"train_max={train_max} <= validation_min={val_min} <= validation_max={val_max} "
+        f"<= calibration_min={cal_min} <= calibration_max={cal_max} <= test_min={test_min}." if passed else
+        f"LEAK: four-way split ordering violated on '{reference_column}' in {failed} -- "
+        f"train/validation/calibration/test blocks are not strictly sequential in this column's values."
+    )
+    return AuditResult("four_way_split_temporal_ordering", passed, detail)
+
+
 def check_window_construction_arithmetic(features_scaled: np.ndarray, target_raw: np.ndarray,
                                           window_size: int, check_index: int,
                                           actual_X_window: np.ndarray, actual_y_target: np.ndarray) -> AuditResult:

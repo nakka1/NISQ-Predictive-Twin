@@ -9,7 +9,7 @@ causal physics simulation (Qiskit Aer), predictive machine learning
 (PyTorch), and calibrated decision theory into a single, closed-loop,
 extensively tested platform.
 
-**443 tests passing.** Full development history (70 chronological
+**474 tests passing.** Full development history (74 chronological
 addenda — every bug found, every negative result, every honest
 limitation) lives in [`docs/history.md`](docs/history.md).
 
@@ -225,7 +225,16 @@ sixty-third addendum.
   smaller than the recurrent/convolutional models' 1280 bytes) — the
   recurrent architectures must hold hidden states across the full
   window (20 timesteps), while FlattenMLP's largest activation is a
-  single hidden-layer vector, independent of window size.
+  single hidden-layer vector, independent of window size. A real
+  10-seed accuracy campaign (mean MAE, Holm-Bonferroni/Benjamini
+  -Hochberg corrected) confirms EdgeLSTM's real advantage over EdgeGRU/
+  EdgeTCN survives multiple-comparisons correction — and directly
+  strengthens an earlier hypothesis with statistical evidence:
+  EdgeTCN's `seed=2024` result is a genuine, confirmed outlier (2.82
+  std devs from its other 9 seeds' mean; excluding it collapses
+  EdgeTCN's std nearly 7x), consistent with the forty-third addendum's
+  speculation that EdgeTCN's poor showing is a training
+  -hyperparameter artifact rather than a fundamental architectural limitation.
 - **DualHead** (`P(available|X) x E[F|available,X]`) — the single
   biggest architectural fix in this project. A single point-estimate
   head, trained on the blended target (mixing near-irreducible
@@ -363,7 +372,20 @@ cost models.
   the checks have genuine detection power, not just always passing. A
   real false positive was found and fixed during development: an
   `F_t=0.0` value collision at the split boundary, expected given
-  `F_t=0.0`'s ~36% base rate in this dataset, not an actual bug.
+  `F_t=0.0`'s ~36% base rate in this dataset, not an actual bug. Extended
+  to the four-way train/validation/calibration/test split — a real
+  tautology bug was found and fixed while building THIS check itself
+  (an early version checked only post-`reset_index` block lengths, which
+  could never fail regardless of whether the source data was genuinely
+  ordered; fixed to check actual value relationships, verified to
+  correctly catch a deliberately shuffled source DataFrame).
+- **Cost weights and Conformal Prediction calibration are also blocked
+  from touching TEST data**, demonstrated concretely: attempting to
+  re-tune `RiskAwareController`'s cost weights or Conformal Prediction's
+  `alpha` after `freeze()` raises the same `AssertionError` that blocks
+  threshold retuning, and a real `ConformalPredictor.calibrate()` call
+  is shown using only the CALIBRATION split, with `get_test_data()`
+  verified to still be locked at that point.
 - **Domain shift / OOD generalization is tested, not assumed** — this
   project has **not established clean physical generalization**.
   Zero-shot domain-shift testing (train in-distribution, evaluate
@@ -384,7 +406,26 @@ cost models.
   every other real controller — both paired t-test and Wilcoxon
   signed-rank test agree (all p < 0.001), every 95% CI for the mean
   difference excludes zero, and Cohen's d exceeds 1.7 (conventionally
-  "huge") for all three pairwise comparisons.
+  "huge") for all three pairwise comparisons. **This finding survives
+  multiple-comparisons correction** — verified with both Holm-Bonferroni
+  (family-wise error rate) and Benjamini-Hochberg (false discovery rate),
+  each cross-checked against `statsmodels`' reference implementation
+  before use: all three adjusted p-values remain < 0.001, confirming the
+  original significance was not an artifact of running 3 related tests
+  without correction.
+- **RiskAwareController's real 10-seed yield campaign confirms — for the
+  fourth independent time, via a genuinely rigorous multi-seed
+  statistical comparison — that it collapses to Blind-equivalent
+  behavior** under honestly-calibrated uncertainty (mean=42.65%, matching
+  Blind's own 42.65% almost to the decimal; loses to DualHead in 10/10
+  seeds, p=0.00013). This result was NOT the first one computed: an
+  initial draft found a misleadingly favorable "+16.18pp beats DualHead"
+  result that was investigated (precisely *because* it contradicted three
+  prior addenda's findings) and traced to three real implementation bugs
+  — a wrong yield denominator, a simplified "useful" check bypassing real
+  purification simulation, and pre-filtering out the ~36% of
+  guaranteed-failure unavailable rounds before computing yield. The
+  corrected, honest, *less* favorable-looking result is the valid one.
 - **WDM-only telemetry significantly outperforms privileged-only
   (T1+T2) access** for conditional fidelity prediction: paired t-test
   across 10 independent seeds, **p=0.0083**, Cohen's d=1.07 (large
@@ -445,7 +486,7 @@ can be reconstructed without re-running dozens of scripts by hand.
 
 ```bash
 pip install -r requirements.txt
-pytest                    # full suite, 443 tests
+pytest                    # full suite, 474 tests
 pytest -m unit -q         # fast subset only
 python run_closed_loop_demo.py --config config.yaml
 python run_master_report.py --config config.yaml   # consolidates outputs/*.csv into outputs/master_report/
@@ -482,5 +523,5 @@ Apache License 2.0 — see [`LICENSE`](LICENSE).
 ---
 
 **For the complete, unabridged development history** — every one of the
-70 addenda, every bug found and fixed with its full investigation, every
+74 addenda, every bug found and fixed with its full investigation, every
 honestly-reported negative result — see [`docs/history.md`](docs/history.md).

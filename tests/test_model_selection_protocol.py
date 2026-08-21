@@ -115,3 +115,77 @@ def test_is_frozen_property_reflects_freeze_state():
     assert protocol.is_frozen is False
     protocol.freeze()
     assert protocol.is_frozen is True
+
+
+def test_cost_weight_tuning_blocked_after_freeze():
+    """Master prompt v5, Secao 11: 'proibido usar TEST para: ... cost
+    weights ...'. Demonstrates directly (not just asserted) that
+    RiskAwareController cost-weight tuning must happen BEFORE freeze():
+    logging a cost-weight decision after freeze() (i.e. attempting to
+    tune C_QPU/C_fidelity/etc. using information only available post
+    -freeze, which in practice means post-test) is rejected by the same
+    mechanism that blocks threshold/hyperparameter tuning."""
+    df = _make_df(1000)
+    protocol = ModelSelectionProtocol(make_four_way_split(df))
+
+    protocol.get_validation_data()
+    protocol.log_decision("C_QPU", 1e-6, phase="validation", rationale="risk-aware cost weight sweep")
+    protocol.log_decision("C_fidelity", 5e-5, phase="validation", rationale="risk-aware cost weight sweep")
+    protocol.freeze()
+
+    with pytest.raises(AssertionError):
+        protocol.log_decision("C_QPU", 2e-6, phase="validation", rationale="re-tuned after seeing test results")
+
+
+def test_conformal_calibration_alpha_tuning_blocked_after_freeze():
+    """Master prompt v5, Secao 11: 'proibido usar TEST para: ...
+    conformal calibration'. Demonstrates that Conformal Prediction's
+    alpha (miscoverage rate) must be finalized during the CALIBRATION
+    phase, before freeze() -- attempting to adjust it afterward
+    (equivalent to re-calibrating using test-set coverage feedback) is
+    rejected."""
+    df = _make_df(1000)
+    protocol = ModelSelectionProtocol(make_four_way_split(df))
+
+    protocol.get_calibration_data()
+    protocol.log_decision("conformal_alpha", 0.10, phase="calibration",
+                           rationale="target 90% coverage, chosen before touching test")
+    protocol.freeze()
+
+    with pytest.raises(AssertionError):
+        protocol.log_decision("conformal_alpha", 0.05, phase="calibration",
+                               rationale="tightened after observing test-set coverage was too wide")
+
+
+def test_conformal_calibration_uses_calibration_split_not_test():
+    """Direct, concrete demonstration: a real ConformalPredictor is
+    calibrated using ONLY protocol.get_calibration_data() -- verifying
+    the calibration set is genuinely disjoint from the (still-locked)
+    test set at the point calibration happens, since get_test_data()
+    would raise ProtocolViolationError if called at this point."""
+    from uncertainty_methods import ConformalPredictor
+    import torch
+
+    df = _make_df(1000)
+    protocol = ModelSelectionProtocol(make_four_way_split(df))
+
+    def dummy_model(x):
+        return torch.full((x.shape[0], 1), 0.5)
+
+    cal_df = protocol.get_calibration_data()
+    X_cal = torch.rand(len(cal_df), 5, 3)
+    y_cal = torch.rand(len(cal_df), 1) * 0.1 + 0.45
+
+    conformal = ConformalPredictor(point_predictor_fn=dummy_model, alpha=0.1)
+    qhat = conformal.calibrate(X_cal, y_cal)
+    protocol.log_decision("conformal_qhat", qhat, phase="calibration",
+                           rationale="calibrated on the CALIBRATION split, test never touched")
+
+    # At this point, test data is still genuinely locked -- calibration
+    # happened without ever needing (or being able) to access it.
+    with pytest.raises(ProtocolViolationError):
+        protocol.get_test_data()
+
+    protocol.freeze()
+    test_df = protocol.get_test_data()  # only now accessible
+    assert len(test_df) > 0

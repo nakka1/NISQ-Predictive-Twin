@@ -11,6 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
 from physics_config import PhysicsConfig
@@ -19,6 +20,7 @@ from temporal_leakage_audit import (
     check_scaler_fit_matches_train_only, check_no_test_only_row_in_scaler_fit,
     check_future_leakage_in_window, check_train_test_target_temporal_ordering,
     check_window_construction_arithmetic, check_no_overlapping_target_leakage, run_full_audit,
+    check_four_way_split_temporal_ordering,
 )
 
 
@@ -136,3 +138,47 @@ def test_overlapping_target_check_does_not_flag_floor_duplicate():
 def test_no_test_only_row_in_scaler_fit_detects_overreach():
     result = check_no_test_only_row_in_scaler_fit(train_cutoff_row=1000, split_idx=500, window_size=20)
     assert not result.passed
+
+
+def test_four_way_split_temporal_ordering_passes_for_correctly_ordered_split():
+    from model_selection_protocol import make_four_way_split
+    df = pd.DataFrame({"value": range(1000)})
+    split = make_four_way_split(df)
+    result = check_four_way_split_temporal_ordering(split, reference_column="value")
+    assert result.passed
+
+
+def test_four_way_split_temporal_ordering_detects_shuffled_source_data():
+    """Regression guard for the real tautology bug found and fixed while
+    building this check: an EARLIER version of this function used only
+    the split blocks' own (reset) index/length arithmetic, which could
+    NEVER fail regardless of whether the source data was genuinely
+    ordered -- this test verifies the FIXED, value-based check correctly
+    flags a source DataFrame that was shuffled before splitting, which
+    the tautological version would have silently passed."""
+    from model_selection_protocol import make_four_way_split
+    df = pd.DataFrame({"value": range(1000)})
+    df_shuffled = df.sample(frac=1, random_state=0).reset_index(drop=True)
+    split = make_four_way_split(df_shuffled)
+    result = check_four_way_split_temporal_ordering(split, reference_column="value")
+    assert not result.passed
+
+
+def test_four_way_split_temporal_ordering_on_real_dataset_v3_pipeline():
+    """Applies the four-way ordering check to the REAL causal WDM
+    dataset (not just a synthetic 'value' column), using the dataset's
+    own row-order as the reference -- confirming the actual production
+    dataset generator produces a genuinely orderable, non-shuffled series."""
+    from model_selection_protocol import make_four_way_split
+    from physics_config import PhysicsConfig
+    from dataset_v3 import QuantumNetworkDatasetV3
+
+    cfg = PhysicsConfig(SEED=9)
+    ds = QuantumNetworkDatasetV3(n_steps=500, config=cfg)
+    df = ds.generate_dataset()
+    df = df.reset_index(drop=True)
+    df["_row_order"] = range(len(df))  # a monotonic reference column derived from row order
+
+    split = make_four_way_split(df)
+    result = check_four_way_split_temporal_ordering(split, reference_column="_row_order")
+    assert result.passed

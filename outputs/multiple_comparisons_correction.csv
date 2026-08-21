@@ -1,0 +1,7 @@
+label,raw_p,adjusted_p,correction_method,significant_at_alpha,alpha,source
+DualHead vs Blind,0.0001,0.00030000000000000003,holm_bonferroni,True,0.05,holm
+DualHead vs Reactive,0.0003,0.0004,holm_bonferroni,True,0.05,holm
+DualHead vs Predictive,0.0002,0.0004,holm_bonferroni,True,0.05,holm
+DualHead vs Blind,0.0001,0.0003,benjamini_hochberg,True,0.05,bh
+DualHead vs Reactive,0.0003,0.0003,benjamini_hochberg,True,0.05,bh
+DualHead vs Predictive,0.0002,0.0003,benjamini_hochberg,True,0.05,bh
