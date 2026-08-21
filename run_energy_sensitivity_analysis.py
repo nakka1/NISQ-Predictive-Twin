@@ -91,6 +91,84 @@ def find_break_even_qpu_energy(halt_rate: float, p_inference_w: float, deploymen
     return (low + high) / 2
 
 
+def find_break_even_inference_energy(halt_rate: float, e_qpu_per_gate: float, deployment_latency_s: float,
+                                      n_rounds: int = 500) -> float:
+    """
+    Master prompt v5, Secao 24: the SECOND named break-even quantity
+    ("break_even_inference_energy") -- binary search over
+    `P_INFERENCE_EDGE_W` (the classical edge-device inference power)
+    instead of `E_QPU_PER_GATE_J`, holding halt_rate and E_QPU_PER_GATE_J
+    fixed. Answers: "how EXPENSIVE would classical inference have to
+    become, at this QPU cost and halt rate, before predictive control
+    stops being worth it?" -- the complementary question to
+    `find_break_even_qpu_energy()`'s "how cheap would QPU energy have to
+    be." Since the ratio being tested (delta_E_QPU_avoided / E_inference)
+    DECREASES as P_INFERENCE_EDGE_W increases (more expensive inference
+    directly increases the denominator), the binary search direction is
+    REVERSED relative to `find_break_even_qpu_energy()`'s.
+    """
+    rounds = build_synthetic_rounds(n_rounds, halt_rate, deployment_latency_s)
+    low, high = 1e-6, 100.0  # Watts -- a wide, deliberately generous search range
+    for _ in range(60):
+        mid = (low + high) / 2
+        cfg = EnergyConfig(E_QPU_PER_GATE_J=e_qpu_per_gate, P_INFERENCE_EDGE_W=mid)
+        result = summarize_run_energy(rounds, cfg)
+        if result["delta_E_QPU_avoided_over_E_inference"] > 1.0:
+            low = mid  # still justified at this (higher) inference power -- push the search higher
+        else:
+            high = mid
+    return (low + high) / 2
+
+
+def find_break_even_prediction_frequency(halt_rate: float, e_qpu_per_gate: float, p_inference_w: float,
+                                          deployment_latency_s: float, n_rounds: int = 500) -> float:
+    """
+    Master prompt v5, Secao 24: the THIRD named break-even quantity
+    ("break_even_prediction_frequency"). Models `prediction_frequency`
+    in (0.0, 1.0] as the fraction of rounds where a FRESH prediction is
+    actually computed (scaling total E_inference_J proportionally) --
+    an explicit, stated modeling choice: rounds WITHOUT a fresh
+    prediction are assumed to reuse the model's most recent decision
+    (the avoided-QPU-energy benefit is held fixed, since the decision
+    quality itself is assumed unaffected by how often it was freshly
+    computed -- a real, honest simplification, not validated against a
+    genuine "stale prediction" degradation model in this pass). Answers:
+    "how INFREQUENTLY could the model be re-run and still remain
+    energy-justified?" -- directly actionable for a real deployment
+    deciding how often to re-poll WDM telemetry and re-predict.
+    """
+    rounds = build_synthetic_rounds(n_rounds, halt_rate, deployment_latency_s)
+    base_cfg = EnergyConfig(E_QPU_PER_GATE_J=e_qpu_per_gate, P_INFERENCE_EDGE_W=p_inference_w)
+    base_result = summarize_run_energy(rounds, base_cfg)
+    e_inference_at_full_frequency = base_result["E_inference_J"]
+    e_qpu_avoided = base_result["E_QPU_avoided_J"]
+
+    if e_inference_at_full_frequency <= 1e-15:
+        return 1.0  # inference cost is already ~zero -- justified at any frequency
+
+    # ratio = e_qpu_avoided / (e_inference_at_full_frequency * frequency) > 1.0
+    # => frequency < e_qpu_avoided / e_inference_at_full_frequency
+    break_even = e_qpu_avoided / e_inference_at_full_frequency
+    return float(np.clip(break_even, 0.0, 1.0))
+
+
+def build_break_even_map(halt_rates: list, p_inference_w: float, deployment_latency_s: float,
+                          n_rounds: int = 500) -> pd.DataFrame:
+    """
+    Master prompt v5, Secao 24: "Produzir Break-even Map." The genuine
+    2D map this section explicitly asks for -- NOT a single break-even
+    point, but the FULL CURVE of break_even_QPU_energy across a range
+    of halt rates, so a reader can see the entire REGION where
+    predictive control becomes energy-favorable (E_predictive < E_blind),
+    not just one operating point.
+    """
+    rows = []
+    for halt_rate in halt_rates:
+        break_even_e_qpu = find_break_even_qpu_energy(halt_rate, p_inference_w, deployment_latency_s, n_rounds)
+        rows.append({"Halt_Rate_pct": round(halt_rate * 100, 1), "Break_Even_E_QPU_per_gate_J": break_even_e_qpu})
+    return pd.DataFrame(rows)
+
+
 def main(config_path: str = "config.yaml"):
     cfg = load_config(config_path)
     os.makedirs("outputs", exist_ok=True)

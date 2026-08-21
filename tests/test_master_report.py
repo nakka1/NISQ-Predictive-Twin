@@ -55,3 +55,36 @@ def test_consolidate_section_all_sources_missing_produces_empty_but_valid_output
     assert result["n_sources_missing"] == 1
     assert result["n_rows"] == 0
     assert os.path.exists("outputs/master_report/test_output.csv")
+
+
+def test_consolidate_uncertainty_method_comparison_populates_coverage(tmp_path, monkeypatch):
+    """Regression guard for the seventy-fifth addendum: this consolidator
+    must populate the coverage/interval_width fields, not leave them None."""
+    monkeypatch.chdir(tmp_path)
+    os.makedirs("outputs", exist_ok=True)
+    pd.DataFrame({
+        "Method": ["TestMethod"], "MAE": [0.25], "RMSE": [0.4],
+        "Coverage_pct": [85.0], "Sharpness_mean_width": [0.9],
+    }).to_csv("outputs/uncertainty_method_comparison.csv", index=False)
+
+    from run_consolidate_master_results import consolidate_uncertainty_method_comparison
+    records = consolidate_uncertainty_method_comparison()
+    assert len(records) == 1
+    assert records[0].coverage == 85.0
+    assert records[0].interval_width == 0.9
+
+
+def test_consolidate_edge_memory_benchmark_populates_memory(tmp_path, monkeypatch):
+    """Regression guard for the seventy-fifth addendum: this consolidator
+    must populate the memory field from RAM_usage_MB."""
+    monkeypatch.chdir(tmp_path)
+    os.makedirs("outputs", exist_ok=True)
+    pd.DataFrame({
+        "Model": ["TestModel"], "Parameters": [1000], "RAM_usage_MB": [0.005],
+        "Activation_Memory_Bytes": [512],
+    }).to_csv("outputs/edge_memory_benchmark.csv", index=False)
+
+    from run_consolidate_master_results import consolidate_edge_memory_benchmark
+    records = consolidate_edge_memory_benchmark()
+    assert len(records) == 1
+    assert records[0].memory == 0.005

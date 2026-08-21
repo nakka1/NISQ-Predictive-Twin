@@ -125,6 +125,39 @@ class RiskAwareController:
 
         return {"HALT": c_halt, "WAIT": c_wait, "PURIFY": c_purify, "p_good": p_good}
 
+    def expected_cost_breakdown(self, mu: float, sigma: float) -> dict:
+        """
+        Master prompt v5, Secao 17: "Auditar suas escalas. Medir
+        distribuicao de cada termo antes de alterar pesos." Exposes each
+        individual cost SUB-TERM by name (all in Joules, this
+        controller's unified cost currency -- see `RiskCostConfig`'s own
+        docstring) -- a SEPARATE, additive method from `expected_cost()`
+        (which returns only the three actions' TOTAL costs) so that
+        method's existing, tested return-value contract
+        (`test_expected_cost_returns_all_three_actions_plus_p_good`'s
+        exact-key-set assertion) is never touched.
+        """
+        p_good = self._p_good(mu, sigma)
+        e_cfg, r_cfg = self.energy_cfg, self.risk_cfg
+
+        c_inference = self.inference_latency_s * e_cfg.P_INFERENCE_EDGE_W
+        c_qpu = r_cfg.N_GATES_PURIFY * e_cfg.E_QPU_PER_GATE_J
+        bbpssw_result = bbpssw_analytical(float(np.clip(mu, 0.0, 1.0)))
+        p_purify_success = bbpssw_result["success_probability"]
+        c_failure = (1.0 - p_purify_success) * r_cfg.FAILURE_COST_J
+        c_fidelity_purify = (1.0 - p_good) * r_cfg.VALUE_BAD_PAIR_PURIFIED_J
+        benefit_purify = p_good * r_cfg.VALUE_MISSED_GOOD_PAIR_J
+        c_latency_wait = self.wait_time_s * r_cfg.WAIT_LATENCY_COST_PER_S
+        c_energy_memory_wait = self.wait_time_s * e_cfg.P_MEMORY_HOLD_W
+        c_missed_opportunity_halt = p_good * r_cfg.VALUE_MISSED_GOOD_PAIR_J
+
+        return {
+            "c_inference_J": c_inference, "c_qpu_J": c_qpu, "c_failure_J": c_failure,
+            "c_fidelity_purify_J": c_fidelity_purify, "benefit_purify_J": benefit_purify,
+            "c_latency_wait_J": c_latency_wait, "c_energy_memory_wait_J": c_energy_memory_wait,
+            "c_missed_opportunity_halt_J": c_missed_opportunity_halt, "p_good": p_good,
+        }
+
     def decide(self, mu: float, sigma: float) -> str:
         costs = self.expected_cost(mu, sigma)
         action_costs = {k: v for k, v in costs.items() if k != "p_good"}

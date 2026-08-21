@@ -1,0 +1,9 @@
+Term,Units,Min,Max,Mean,Std,Range
+c_inference_J,Joules (classical edge-device compute energy per inference),5e-05,5e-05,5.0000000000000016e-05,1.3552527156068805e-20,0.0
+c_qpu_J,"Joules (superconducting-qubit-class control-pulse energy, order-of-magnitude estimate)",9.999999999999999e-06,9.999999999999999e-06,9.999999999999997e-06,1.6940658945086007e-21,0.0
+c_failure_J,Joules (cost of an outright-failed BBPSSW attempt),7.019429195051936e-07,7.935833418520448e-07,7.073454083171642e-07,5.798943759015542e-09,9.164042234685119e-08
+c_fidelity_purify_J,Joules (opportunity cost of purifying an ultimately-bad pair),1.4693420666597889e-06,1.5071650980136092e-06,1.4863137754828716e-06,5.464789803685413e-09,3.7823031353820367e-08
+benefit_purify_J,Joules (benefit of successfully purifying a genuinely good pair),2.488058169977318e-05,2.5510965555670186e-05,2.5228103741952142e-05,9.10798300614234e-08,6.303838558970048e-07
+c_latency_wait_J,Joules (decision-latency cost incurred by choosing WAIT),1e-09,1e-09,1.0000000000000003e-09,2.0679515313825692e-25,0.0
+c_energy_memory_wait_J,Joules (quantum-memory hold power draw during WAIT),1e-08,1e-08,1e-08,0.0,0.0
+c_missed_opportunity_halt_J,Joules (opportunity cost of HALTing a genuinely good pair),2.488058169977318e-05,2.5510965555670186e-05,2.5228103741952142e-05,9.10798300614234e-08,6.303838558970048e-07

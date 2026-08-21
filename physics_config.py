@@ -45,6 +45,21 @@ class PhysicsConfig:
     KAPPA_DEPOL_FROM_BER: float = 15.0  # optical BER -> extra quantum depolarizing-probability coupling
     KAPPA_ENV_T1T2: float = 0.03        # shared-environment -> T1/T2 degradation coupling
 
+    # --- NEW (seventy-sixth addendum, master prompt v5 Secao 1): explicit
+    # Ornstein-Uhlenbeck process parameters for the shared environmental
+    # driver theta(t), exposed here so domain-shift experiments can vary
+    # them WITHOUT touching dataset_v3.py's source code. Defaults match
+    # the values that were previously HARDCODED inside
+    # dataset_v3.py's _unbounded_mean_reverting_walk() call for theta_series
+    # exactly (sigma=0.6, mean_reversion=0.1) -- every existing
+    # PhysicsConfig(...) call site anywhere in the repo continues to
+    # produce BYTE-IDENTICAL datasets, verified directly (see this
+    # addendum's own regression test comparing default-config output
+    # against the pre-change hardcoded values). ---
+    OU_THETA_SIGMA: float = 0.6         # diffusion coefficient / drift amplitude of theta(t)'s random walk
+    OU_THETA_MEAN_REVERSION: float = 0.1  # inversely related to correlation_time: higher = shorter memory
+    OU_SAMPLING_INTERVAL_STEPS: int = 1   # every how many simulation steps theta(t) is resampled (1 = every step)
+
     def __post_init__(self):
         assert self.T2 <= 2 * self.T1, "Physical constraint violated: T2 must be <= 2*T1"
         assert 0.0 <= self.DEPOLARIZATION_P <= 1.0, "DEPOLARIZATION_P must be a probability"

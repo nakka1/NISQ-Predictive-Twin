@@ -228,14 +228,29 @@ class QuantumNetworkDatasetV3:
             series[t] = val
         return series
 
-    def _unbounded_mean_reverting_walk(self, sigma: float, mean_reversion: float = 0.03) -> np.ndarray:
+    def _unbounded_mean_reverting_walk(self, sigma: float, mean_reversion: float = 0.03,
+                                        sampling_interval_steps: int = 1) -> np.ndarray:
         """Same style of walk as `_bounded_random_walk`, but centered at 0
         with no hard clip range -- used for zero-mean processes like
-        environmental perturbation theta(t) and phase noise."""
+        environmental perturbation theta(t) and phase noise.
+
+        `sampling_interval_steps` (added in the seventy-sixth addendum,
+        master prompt v5 Secao 1's explicit "sampling interval" domain
+        -shift dimension): the underlying random increment is only
+        REDRAWN every `sampling_interval_steps` simulation steps; between
+        redraws, the process holds its most recent increment (mean
+        -reversion still applies every step). `sampling_interval_steps=1`
+        (the default) redraws every step, matching this method's
+        ORIGINAL, unparameterized behavior exactly -- verified via a
+        dedicated regression test comparing byte-identical output against
+        the pre-change hardcoded call."""
         val = 0.0
         series = np.zeros(self.n_steps)
+        increment = 0.0
         for t in range(self.n_steps):
-            val += mean_reversion * (0.0 - val) + self.rng.normal(0, sigma)
+            if t % sampling_interval_steps == 0:
+                increment = self.rng.normal(0, sigma)
+            val += mean_reversion * (0.0 - val) + increment
             series[t] = val
         return series
 
@@ -251,7 +266,9 @@ class QuantumNetworkDatasetV3:
         # base-walk bump to 0.05 gives 43.0% vs. 31.0% -- still imperfect,
         # a real residual limitation documented in the README, but far
         # better balanced than before).
-        theta_series = self._unbounded_mean_reverting_walk(sigma=0.6, mean_reversion=0.1)
+        theta_series = self._unbounded_mean_reverting_walk(
+            sigma=cfg.OU_THETA_SIGMA, mean_reversion=cfg.OU_THETA_MEAN_REVERSION,
+            sampling_interval_steps=cfg.OU_SAMPLING_INTERVAL_STEPS)
 
         # --- Quantum-privileged parameters: base random walks + environmental coupling ---
         T1_base_series = self._bounded_random_walk(cfg.T1, 0.01, cfg.T1 * 0.5, cfg.T1 * 1.5)

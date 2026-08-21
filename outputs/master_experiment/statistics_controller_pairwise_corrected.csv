@@ -1,0 +1,4 @@
+Comparison,Mean_diff,CI95_low,CI95_high,Wins,Paired_t_p,Wilcoxon_p,Cohens_d
+DualHead vs Blind,7.822,5.055,10.589,10/10,0.0001,0.002,2.022
+DualHead vs Reactive,7.411,4.433,10.389,10/10,0.0003,0.002,1.78
+DualHead vs Predictive,7.453,4.609,10.297,10/10,0.0002,0.002,1.875

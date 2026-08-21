@@ -1,0 +1,6 @@
+Model,Parameters,RAM_usage_MB,Activation_Memory_Bytes,Activation_Memory_KB
+EdgeLSTM,2193,0.0035,1280,1.25
+EdgeGRU,1649,0.0029,1280,1.25
+EdgeTCN,2369,0.0029,1280,1.25
+FlattenMLP,11361,0.0021,128,0.125
+EdgeLSTMDualHead,2210,0.0025,1280,1.25

@@ -144,6 +144,44 @@ def consolidate_sensitivity_analysis():
     return records
 
 
+def consolidate_uncertainty_method_comparison() -> list:
+    """Master prompt v5, Secao 30: populates the `coverage`/`interval_width`
+    fields (added in the seventy-fifth addendum) from the real
+    forty-fifth addendum's uncertainty-method comparison -- the only
+    existing source with genuine coverage/interval-width measurements."""
+    path = "outputs/uncertainty_method_comparison.csv"
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path)
+    records = []
+    for _, row in df.iterrows():
+        records.append(MasterExperimentRecord(
+            model=row["Method"], dataset_version="v3-causal", physics_engine="ReferenceEngine (Aer)",
+            realism_level="L1-stochastic", MAE=float(row["MAE"]), RMSE=float(row["RMSE"]),
+            coverage=float(row["Coverage_pct"]), interval_width=float(row["Sharpness_mean_width"]),
+            source_experiment="uncertainty_method_comparison",
+        ))
+    return records
+
+
+def consolidate_edge_memory_benchmark() -> list:
+    """Master prompt v5, Secao 30: populates the `memory` field (added
+    in the seventy-fifth addendum) from the sixty-sixth addendum's real
+    tracemalloc-measured RAM_usage_MB per architecture."""
+    path = "outputs/edge_memory_benchmark.csv"
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path)
+    records = []
+    for _, row in df.iterrows():
+        records.append(MasterExperimentRecord(
+            model=row["Model"], dataset_version="v3-causal", memory=float(row["RAM_usage_MB"]),
+            source_experiment="edge_memory_benchmark",
+            notes=f"Parameters={row['Parameters']}, Activation_Memory_Bytes={row['Activation_Memory_Bytes']}",
+        ))
+    return records
+
+
 def main():
     print("Consolidating headline experiments into the master experiment database ...")
     all_records = []
@@ -155,6 +193,8 @@ def main():
         ("WDM feature ablation", consolidate_wdm_feature_ablation),
         ("Pareto frontier / Edge benchmark", consolidate_edge_benchmark),
         ("Sensitivity analysis", consolidate_sensitivity_analysis),
+        ("Uncertainty method comparison", consolidate_uncertainty_method_comparison),
+        ("Edge memory benchmark", consolidate_edge_memory_benchmark),
     ]
 
     for label, fn in consolidators:

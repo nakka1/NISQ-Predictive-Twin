@@ -149,3 +149,55 @@ def test_multihop_causal_chain_regression():
         f"expected {MULTIHOP_GOLDEN_SUCCESS_RATE_PCT}% "
         f"(relative tolerance {MULTIHOP_RELATIVE_TOLERANCE*100:.0f}%)."
     )
+
+
+def test_ou_theta_default_config_produces_byte_identical_dataset():
+    """Regression guard for the seventy-sixth addendum (master prompt v5,
+    Secao 1): PhysicsConfig's new OU_THETA_SIGMA/OU_THETA_MEAN_REVERSION/
+    OU_SAMPLING_INTERVAL_STEPS fields (defaulting to 0.6/0.1/1, matching
+    the values that were previously HARDCODED inside dataset_v3.py's
+    theta_series generation call) must produce a BYTE-IDENTICAL dataset
+    to the pre-change hardcoded behavior -- verified directly against
+    the real dataset_hash recorded in this project's own SeedRegistry
+    for seed=42 during the seventy-third addendum's campaign, computed
+    BEFORE this addendum's change existed."""
+    from physics_config import PhysicsConfig
+    from dataset_v3 import QuantumNetworkDatasetV3
+    import pandas as pd
+
+    cfg = PhysicsConfig(SEED=42)
+    dataset = QuantumNetworkDatasetV3(n_steps=4000, config=cfg)
+    df = dataset.generate_dataset()
+    dataset_hash = pd.util.hash_pandas_object(df).sum()
+    assert str(dataset_hash) == "8357998861674456070", (
+        "PhysicsConfig's new OU parameters, at their default values, must reproduce the "
+        "EXACT pre-change dataset -- a different hash means backward compatibility broke."
+    )
+
+
+def test_ou_sampling_interval_steps_one_matches_unparameterized_walk():
+    """Direct verification that sampling_interval_steps=1 draws exactly
+    one fresh random increment per simulation step (the ORIGINAL,
+    unparameterized method's behavior) -- not an extra or missing draw
+    that would silently shift the shared RNG's state."""
+    from dataset_v3 import QuantumNetworkDatasetV3
+    from physics_config import PhysicsConfig
+    import numpy as np
+
+    cfg = PhysicsConfig(SEED=1)
+    ds = QuantumNetworkDatasetV3(n_steps=50, config=cfg)
+
+    # Directly reproduce the ORIGINAL (pre-parameterization) walk logic
+    # using a FRESH rng seeded identically, to compare against the
+    # parameterized version's sampling_interval_steps=1 output.
+    rng_reference = np.random.default_rng(1)
+    val = 0.0
+    reference_series = np.zeros(50)
+    for t in range(50):
+        val += 0.1 * (0.0 - val) + rng_reference.normal(0, 0.6)
+        reference_series[t] = val
+
+    ds.rng = np.random.default_rng(1)  # reset to the same seed the reference used
+    parameterized_series = ds._unbounded_mean_reverting_walk(sigma=0.6, mean_reversion=0.1,
+                                                               sampling_interval_steps=1)
+    assert np.allclose(reference_series, parameterized_series)

@@ -1,0 +1,7 @@
+label,raw_p,adjusted_p,correction_method,significant_at_alpha,alpha,source
+EdgeLSTM vs EdgeGRU,0.0127737797649426,0.0127737797649426,holm_bonferroni,True,0.05,holm
+EdgeLSTM vs EdgeTCN,8.991911659289529e-06,2.6975734977868587e-05,holm_bonferroni,True,0.05,holm
+EdgeGRU vs EdgeTCN,0.0002673826937257,0.0005347653874514,holm_bonferroni,True,0.05,holm
+EdgeLSTM vs EdgeGRU,0.0127737797649426,0.0127737797649426,benjamini_hochberg,True,0.05,bh
+EdgeLSTM vs EdgeTCN,8.991911659289529e-06,2.6975734977868587e-05,benjamini_hochberg,True,0.05,bh
+EdgeGRU vs EdgeTCN,0.0002673826937257,0.0004010740405885,benjamini_hochberg,True,0.05,bh

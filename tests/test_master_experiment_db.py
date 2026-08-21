@@ -66,3 +66,25 @@ def test_load_master_results_returns_empty_df_when_no_file(tmp_path, monkeypatch
     df = load_master_results()
     assert len(df) == 0
     assert list(df.columns) == REQUIRED_FIELDS
+
+
+def test_record_supports_new_v5_fields():
+    """Regression guard for the seventy-fifth addendum's Secao 30
+    extension: config_hash, coverage, interval_width, memory must all
+    be settable fields, not just accepted-and-ignored kwargs."""
+    record = MasterExperimentRecord(config_hash="abc123", coverage=90.0, interval_width=0.5, memory=1.2)
+    assert record.config_hash == "abc123"
+    assert record.coverage == 90.0
+    assert record.interval_width == 0.5
+    assert record.memory == 1.2
+
+
+def test_new_v5_fields_are_none_by_default():
+    """Backward-compatibility guard: existing callers that don't pass
+    these new fields must still get a valid record with None for them,
+    not a TypeError or a required-argument failure."""
+    record = MasterExperimentRecord(model="TestModel")
+    assert record.config_hash is None
+    assert record.coverage is None
+    assert record.interval_width is None
+    assert record.memory is None
