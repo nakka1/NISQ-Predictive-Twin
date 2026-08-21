@@ -40,3 +40,26 @@ property of genuine multi-objective trade-offs, not a data error. See
 `outputs/plots/pareto_frontier.png` for the scatter visualization.
 Caveat: `EdgeLSTMDualHead`'s MAE is conditional (on pair availability),
 not directly comparable 1:1 to the other four models' unconditional MAE.
+
+## End-to-end latency (separate from the forward-only micro-benchmark)
+
+`run_edge_e2e_benchmark.py` measures the full round-trip — telemetry
+read, preprocessing, model forward pass, decision, and control (a real
+BBPSSW purification call) — with each stage timed separately, never
+mixed:
+
+```
+     Stage    P50_us
+ telemetry     4.877
+preprocess    55.627
+ inference   267.573
+  decision     3.863
+   control  1601.148   <- dominates
+ TOTAL_E2E  1933.088
+```
+
+The control stage (real quantum density-matrix purification) costs ~6x
+more than the model's forward pass — a 7.22x total end-to-end overhead
+multiplier vs. the forward-only benchmark alone. This overhead is
+conditional on halt rate: a controller that HALTs more often (skipping
+the expensive purification call) shows a smaller multiplier.

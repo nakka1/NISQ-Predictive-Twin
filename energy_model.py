@@ -2,9 +2,26 @@
 energy_model.py
 ==================
 
-Master audit Section 22: separated energy accounting.
+Master audit Section 22 / master prompt v4 Fase 18: separated energy
+accounting.
 
     E_total = E_QPU + E_inference + E_memory + E_communication + E_optical
+
+TERMINOLOGY, per master prompt v4 Fase 18's explicit instruction ("Não
+utilizar resultados do modelo energético para afirmar: hardware
+-efficient; energy-efficient; hardware validated. sem medição física.
+Utilizar termos: simulation-based energy estimate; model-based energy
+analysis"): every number this module produces is a **simulation-based
+energy estimate** (computed by combining measured LATENCIES from this
+project's real benchmarks with explicitly-labeled per-unit energy
+CONSTANTS that are themselves unmeasured order-of-magnitude estimates,
+not a physical power measurement of any kind) -- collectively, this
+module performs **model-based energy analysis**, not hardware energy
+profiling. This project has NEVER measured energy on real hardware, and
+nothing in this module's output should be read as such. See
+`docs/validation_levels.md` for the formal `RealismLevel`/
+`ValidationLevel` taxonomy this project applies to every result,
+including this one.
 
 CRITICAL, EXPLICIT DISCLOSURE (per the master audit's own instruction:
 "Se os parâmetros forem estimados, declarar explicitamente que são
@@ -50,14 +67,31 @@ class EnergyConfig:
     P_MEMORY_HOLD_W: float = 0.01
     E_COMMUNICATION_PER_MSG_J: float = 1.0e-6
     P_OPTICAL_W: float = 0.02
+    P_CONTROL_EDGE_W: float = 0.1  # same edge device running the admission-decision logic
+    # (threshold comparison / argmin over cost terms) as runs inference --
+    # kept as a SEPARATE field (not silently folded into P_INFERENCE_EDGE_W)
+    # so E_control can be reported as its own line item, per master prompt
+    # v4 Fase 17's explicit five-way split: E_inference/E_QPU/E_memory/
+    # E_communication/E_control.
 
 
 def estimate_energy_breakdown(n_qpu_gates: int, inference_latency_s: float, memory_storage_time_s: float,
                                n_communication_messages: int, optical_transmission_time_s: float,
-                               energy_cfg: EnergyConfig = None) -> dict:
+                               energy_cfg: EnergyConfig = None, control_latency_s: float = 0.0) -> dict:
     """
-    Computes the five-way energy breakdown for ONE round (one admission
-    decision + its downstream quantum operation, if any).
+    Computes the SIX-way energy breakdown for ONE round (one admission
+    decision + its downstream quantum operation, if any) -- extended in
+    the sixty-seventh addendum (master prompt v4 Fase 17) to separate
+    E_control (the admission-DECISION logic itself: threshold comparison,
+    or RiskAwareController's argmin over cost terms) from E_inference
+    (the model's forward pass) as its own explicit line item, rather than
+    silently folding decision cost into inference cost.
+
+    `control_latency_s` defaults to 0.0 for full backward compatibility
+    with every pre-existing caller of this function (addenda 24, 39, 43,
+    55, 58, 60, 64) -- passing the fifty-sixth addendum's real measured
+    decision-stage P50 latency (3.863us) here connects this energy model
+    to an ACTUAL measurement rather than a fresh estimate.
 
     n_qpu_gates: number of quantum gate operations actually executed this
         round (0 if HALTed -- no QPU operation means no E_QPU cost).
@@ -65,6 +99,10 @@ def estimate_energy_breakdown(n_qpu_gates: int, inference_latency_s: float, memo
         fix) -- NOT the raw measured tau_inf, for the same reproducibility
         reason latency itself must be configured, not measured, when used
         to drive downstream physical/resource quantities.
+
+    Returns a **simulation-based energy estimate** (master prompt v4
+    Fase 18) -- never a hardware measurement. Every value in the returned
+    dict should be read and cited as such.
     """
     cfg = energy_cfg or EnergyConfig()
 
@@ -73,12 +111,14 @@ def estimate_energy_breakdown(n_qpu_gates: int, inference_latency_s: float, memo
     e_memory = memory_storage_time_s * cfg.P_MEMORY_HOLD_W
     e_communication = n_communication_messages * cfg.E_COMMUNICATION_PER_MSG_J
     e_optical = optical_transmission_time_s * cfg.P_OPTICAL_W
+    e_control = control_latency_s * cfg.P_CONTROL_EDGE_W
 
-    e_total = e_qpu + e_inference + e_memory + e_communication + e_optical
+    e_total = e_qpu + e_inference + e_memory + e_communication + e_optical + e_control
 
     return {
         "E_QPU_J": e_qpu, "E_inference_J": e_inference, "E_memory_J": e_memory,
-        "E_communication_J": e_communication, "E_optical_J": e_optical, "E_total_J": e_total,
+        "E_communication_J": e_communication, "E_optical_J": e_optical, "E_control_J": e_control,
+        "E_total_J": e_total,
     }
 
 

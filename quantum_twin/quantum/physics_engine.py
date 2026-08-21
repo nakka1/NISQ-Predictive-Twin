@@ -3,8 +3,8 @@ quantum_twin/quantum/physics_engine.py
 ==========================================
 
 Master prompt Phase 4: a formal `QuantumPhysicsEngine` abstraction with
-(at least) two implementations, `ReferenceEngine` and `FastEngine`, and a
-benchmark that MEASURES speedup instead of assuming it.
+(at least) two implementations, `ReferenceEngine` and `AnalyticalEngine`,
+and a benchmark that MEASURES speedup instead of assuming it.
 
 This is genuinely NEW code (not a re-export) living directly in
 `quantum_twin/` -- the first module in this migration where the package
@@ -14,32 +14,42 @@ flat file. It wraps the two already-validated channel implementations
 closed-form Kraus algebra) behind a common interface, and adds the
 explicit accuracy/speed benchmark matrix the master prompt requires:
 
-    regime | reference_fidelity | fast_fidelity | absolute_error |
-    relative_error | reference_latency | fast_latency | speedup
+    regime | reference_fidelity | analytical_fidelity | absolute_error |
+    relative_error | reference_latency | analytical_latency | speedup
 
 FINDING CARRIED FORWARD FROM THE PRE-MIGRATION AUDIT (README's
 twenty-seventh addendum): when the SAME `ReferenceEngine`-wrapped Aer
 channel object is REUSED across many calls (only `depol_prob`/
 `exposure_time` varying, T1/T2 held fixed on the object -- exactly how
-`dataset_v3.py`'s actual generator uses it), the "fast" Kraus-algebra
+`dataset_v3.py`'s actual generator uses it), the closed-form Kraus-algebra
 engine showed NO measured speed advantage (speedup ~0.96x-1.0x).
 
 FINDING FROM THIS MODULE'S OWN BENCHMARK (`run_engine_benchmark()`,
 which constructs a FRESH channel object per call, since T1/T2 vary
-across regimes): the fast engine IS meaningfully faster here (speedup
-~5.8x-6.5x across the regimes tested). Isolating the cause: reconstructing
-the Aer channel object (circuit build + transpile) costs ~26ms of pure
-overhead per call, vs. ~4.3ms for the actual simulation once an existing
-object is reused -- the Kraus engine has no such per-object construction
-cost (it just stores T1/T2/depol_prob as plain attributes).
+across regimes): the closed-form engine IS meaningfully faster here
+(speedup ~5.8x-6.5x across the regimes tested). Isolating the cause:
+reconstructing the Aer channel object (circuit build + transpile) costs
+~26ms of pure overhead per call, vs. ~4.3ms for the actual simulation
+once an existing object is reused -- the Kraus engine has no such
+per-object construction cost (it just stores T1/T2/depol_prob as plain
+attributes).
 
-**The honest, regime-dependent conclusion**: `FastEngine` wins decisively
-when channel PARAMETERS (T1/T2) change between calls and a fresh engine
-object must be built each time; it shows no advantage when the SAME
-engine object is reused across calls with only depol_prob/exposure_time
-varying. Per this prompt's explicit instruction ("Não assumir que o
-FastEngine é mais rápido. MEDIR."), this module reports BOTH regimes
-rather than picking one number to characterize "the" speedup.
+**The honest, regime-dependent conclusion**: the closed-form engine wins
+decisively when channel PARAMETERS (T1/T2) change between calls and a
+fresh engine object must be built each time; it shows no advantage when
+the SAME engine object is reused across calls with only depol_prob/
+exposure_time varying. Per this prompt's explicit instruction ("Não
+assumir que o engine analítico é mais rápido. MEDIR."), this module
+reports BOTH regimes rather than picking one number to characterize "the"
+speedup.
+
+NAMING NOTE (master prompt v4, Fase 16): this class was originally named
+`FastEngine`. That name implies an unconditional speed expectation the
+regime-dependent finding above directly contradicts -- a name should
+describe WHAT a method IS (closed-form analytical computation), not an
+untested assumption about how it performs. Renamed to `AnalyticalEngine`
+for this reason; `FastEngine` is kept as a backward-compatible alias
+(`FastEngine = AnalyticalEngine`) so existing imports do not break.
 
 SCOPE LIMITATION, stated explicitly: the requested regime dimensions
 include "numero de qubits" and "numero de hops" -- this module's engines
@@ -103,13 +113,23 @@ class ReferenceEngine(QuantumPhysicsEngine):
         return channel.simulate_fidelity(depol_prob=depol_prob, exposure_time=exposure_time)
 
 
-class FastEngine(QuantumPhysicsEngine):
+class AnalyticalEngine(QuantumPhysicsEngine):
     """Wraps `quantum_channel.QuantumNoiseChannel` -- closed-form
-    Kraus-operator algebra, no circuit execution or sampling."""
+    Kraus-operator algebra, no circuit execution or sampling. Named for
+    WHAT it is (a closed-form analytical computation), not for an
+    unconditional speed claim -- see this module's docstring for the
+    measured, regime-dependent speed finding. Formerly `FastEngine`;
+    that name is kept below as a backward-compatible alias."""
 
     def simulate_fidelity(self, T1: float, T2: float, depol_prob: float, exposure_time: float) -> float:
         channel = _KrausChannel(T1=T1, T2=T2, depol_prob=depol_prob)
         return channel.apply(elapsed_time=exposure_time, depol_prob_override=depol_prob)
+
+
+# Backward-compatible alias -- do not remove without a deprecation cycle.
+# Existing code (`quantum_twin/quantum/__init__.py`, tests, and any
+# external consumer) importing `FastEngine` continues to work unchanged.
+FastEngine = AnalyticalEngine
 
 
 DEFAULT_REGIMES = [
@@ -132,13 +152,13 @@ def run_engine_benchmark(regimes: list = None, n_timing_reps: int = 200) -> pd.D
     """
     regimes = regimes or DEFAULT_REGIMES
     reference = ReferenceEngine()
-    fast = FastEngine()
+    analytical = AnalyticalEngine()
 
     rows = []
     for regime in regimes:
         f_ref = reference.simulate_fidelity(regime.T1, regime.T2, regime.depol_prob, regime.exposure_time)
-        f_fast = fast.simulate_fidelity(regime.T1, regime.T2, regime.depol_prob, regime.exposure_time)
-        abs_error = abs(f_ref - f_fast)
+        f_analytical = analytical.simulate_fidelity(regime.T1, regime.T2, regime.depol_prob, regime.exposure_time)
+        abs_error = abs(f_ref - f_analytical)
         rel_error = abs_error / f_ref if f_ref > 1e-12 else float("nan")
 
         t0 = time.perf_counter()
@@ -148,16 +168,16 @@ def run_engine_benchmark(regimes: list = None, n_timing_reps: int = 200) -> pd.D
 
         t0 = time.perf_counter()
         for _ in range(n_timing_reps):
-            fast.simulate_fidelity(regime.T1, regime.T2, regime.depol_prob, regime.exposure_time)
-        fast_latency = (time.perf_counter() - t0) / n_timing_reps
+            analytical.simulate_fidelity(regime.T1, regime.T2, regime.depol_prob, regime.exposure_time)
+        analytical_latency = (time.perf_counter() - t0) / n_timing_reps
 
-        speedup = ref_latency / fast_latency if fast_latency > 0 else float("inf")
+        speedup = ref_latency / analytical_latency if analytical_latency > 0 else float("inf")
 
         rows.append({
             "regime": regime.name, "T1": regime.T1, "T2": regime.T2, "depol_prob": regime.depol_prob,
-            "exposure_time": regime.exposure_time, "reference_fidelity": f_ref, "fast_fidelity": f_fast,
-            "absolute_error": abs_error, "relative_error": rel_error,
-            "reference_latency_s": ref_latency, "fast_latency_s": fast_latency, "speedup": speedup,
+            "exposure_time": regime.exposure_time, "reference_fidelity": f_ref,
+            "analytical_fidelity": f_analytical, "absolute_error": abs_error, "relative_error": rel_error,
+            "reference_latency_s": ref_latency, "analytical_latency_s": analytical_latency, "speedup": speedup,
         })
 
     return pd.DataFrame(rows)

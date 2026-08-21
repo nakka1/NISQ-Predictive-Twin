@@ -147,6 +147,17 @@ class ClosedLoopMultiHopEnvironment:
 
 def summarize_multihop_run(round_results: list, threshold: float = 0.65,
                             energy_cfg: EnergyConfig = None) -> dict:
+    """
+    Extended in the sixty-eighth addendum (master prompt v4 Fase 19) to
+    add `false_purification_count`/`missed_opportunity_count`, computed
+    directly from each hop's own (action, f_before) pair against the
+    SAME threshold used for the overall success criterion -- a false
+    purification is a hop that chose PURIFY on an f_before already below
+    threshold (wasted QPU resources); a missed opportunity is a hop that
+    chose HALT on an f_before already at/above threshold (a genuinely
+    good pair declined). Computed per-HOP (not per end-to-end round),
+    since the admission decision itself happens at the per-hop level.
+    """
     energy_cfg = energy_cfg or EnergyConfig()
     n_rounds = len(round_results)
     final_fidelities = [r.final_fidelity for r in round_results]
@@ -155,6 +166,15 @@ def summarize_multihop_run(round_results: list, threshold: float = 0.65,
     n_purify_total = sum(r.n_purify_attempts for r in round_results)
     n_qpu_gates_total = sum(r.n_qpu_gates for r in round_results)
     total_latency = sum(r.total_latency_s for r in round_results)
+
+    n_false_purification = 0
+    n_missed_opportunity = 0
+    for r in round_results:
+        for hop in r.hop_results:
+            if hop.action == "PURIFY" and hop.available and hop.f_before < threshold:
+                n_false_purification += 1
+            elif hop.action == "HALT" and hop.available and hop.f_before >= threshold:
+                n_missed_opportunity += 1
 
     total_energy = 0.0
     for r in round_results:
@@ -170,6 +190,8 @@ def summarize_multihop_run(round_results: list, threshold: float = 0.65,
         "useful_pairs": n_useful,
         "success_probability_pct": n_useful / n_rounds * 100 if n_rounds else 0.0,
         "purification_count": n_purify_total,
+        "false_purification_count": n_false_purification,
+        "missed_opportunity_count": n_missed_opportunity,
         "qpu_operations": n_qpu_gates_total,
         "total_latency_s": total_latency,
         "total_energy_J": total_energy,

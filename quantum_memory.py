@@ -25,6 +25,19 @@ model directly to THAT state (via `QuantumChannel.apply_decoherence_to_state`),
 rather than to a fresh ideal pair. Verified to differ measurably from the
 old scalar approximation (e.g. 0.7876 vs. 0.7830 for a representative case),
 confirming the more rigorous treatment matters.
+
+MIGRATION NOTE (sixty-third addendum, master prompt v4 Fase 26): a
+migration of this module's implementation into `quantum_twin/quantum/memory.py`
+was ATTEMPTED and REVERTED after discovering a real circular-import risk
+-- see `docs/history.md`'s sixty-third addendum and this file's own
+docstring note preserved for future reference: importing
+`quantum_twin.quantum.memory` directly triggers `quantum_twin/__init__.py`'s
+full package initialization (Python always initializes parent packages
+before a submodule), which transitively imports `quantum_twin.simulation`
+-> root `environment.py` -> root `quantum_memory.py` -- circular, since
+that last import is the very file being migrated. This module remains the
+real implementation; `quantum_twin/quantum/memory.py` remains its
+re-export shim, UNCHANGED from before this addendum.
 """
 
 import time as _time

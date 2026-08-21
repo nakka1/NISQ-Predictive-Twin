@@ -1,0 +1,17 @@
+Model,Parameters,Model_Size_Bytes,Approx_RAM_Bytes,Throughput_Hz,P50_us,P90_us,P95_us,P99_us,mean_us,std_us,min_us,max_us,Source_File,Stage,Mean_us,MAE,P50_latency_us,Inference_Energy_J,Pareto_Optimal
+EdgeLSTM,2193.0,8772.0,8772.0,9474.8,96.014,137.95810000000003,148.948,171.28700999999995,105.542724,20.26147802969527,89.831,224.932,edge_ai_benchmark.csv,,,,,,
+EdgeGRU,1649.0,6596.0,6596.0,2936.3,334.3745,367.3312,388.441,462.84538,340.568896,30.961368755421397,308.77,672.91,edge_ai_benchmark.csv,,,,,,
+EdgeTCN,2369.0,9476.0,9476.0,7334.5,123.092,167.708,197.88484999999983,259.60731,136.341652,28.65756920589909,115.696,298.467,edge_ai_benchmark.csv,,,,,,
+FlattenMLP,11361.0,45444.0,45444.0,30331.9,30.56,39.843300000000006,50.23539999999996,61.92607,32.96855600000001,7.3071153010517085,29.511,101.079,edge_ai_benchmark.csv,,,,,,
+EdgeLSTMDualHead,2210.0,8840.0,8840.0,7247.8,125.769,181.32420000000005,203.6409999999997,266.26251,137.973004,37.986220900321,101.244,438.484,edge_ai_benchmark.csv,,,,,,
+,,,,,4.877,9.112,,13.616,,,,,edge_e2e_benchmark.csv,telemetry,6.143,,,,
+,,,,,55.627,67.947,,92.551,,,,,edge_e2e_benchmark.csv,preprocess,46.99,,,,
+,,,,,267.573,341.252,,385.269,,,,,edge_e2e_benchmark.csv,inference,256.421,,,,
+,,,,,3.863,4.482,,9.393,,,,,edge_e2e_benchmark.csv,decision,3.636,,,,
+,,,,,1601.148,1854.479,,2243.818,,,,,edge_e2e_benchmark.csv,control,1072.342,,,,
+,,,,,1933.088,2277.272,,2744.647,,,,,edge_e2e_benchmark.csv,TOTAL_E2E,1385.532,,,,
+EdgeLSTM,2193.0,8772.0,,,,,,,,,,,pareto_frontier.csv,,,0.27662,96.01,1.05542724e-05,True
+EdgeGRU,1649.0,6596.0,,,,,,,,,,,pareto_frontier.csv,,,0.28235,334.37,3.4056889599999995e-05,True
+EdgeTCN,2369.0,9476.0,,,,,,,,,,,pareto_frontier.csv,,,0.59955,123.09,1.36341652e-05,False
+FlattenMLP,11361.0,45444.0,,,,,,,,,,,pareto_frontier.csv,,,0.55598,30.56,3.296855600000001e-06,True
+EdgeLSTMDualHead,2210.0,8840.0,,,,,,,,,,,pareto_frontier.csv,,,0.01809,125.77,1.37973004e-05,True

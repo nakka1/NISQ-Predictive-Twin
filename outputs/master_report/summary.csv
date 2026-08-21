@@ -1,0 +1,8 @@
+Section,Sources_Found,Sources_Missing,Total_Rows
+controller_results.csv,3,0,20
+domain_shift.csv,3,0,15
+causal_results.csv,2,0,18
+uncertainty.csv,2,0,14
+edge_benchmark.csv,3,0,16
+energy_results.csv,2,0,156
+statistical_results.csv,3,0,36

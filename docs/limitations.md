@@ -81,3 +81,11 @@ A methodological confound (MinMaxScaler producing out-of-[0,1]-range
 inputs under a T1/T2 shift) was found and explicitly disentangled before
 drawing conclusions — see `docs/history.md`'s forty-ninth addendum for
 the full investigation. **No claim of physical generalization is made.**
+
+## Formal validation/realism taxonomy
+
+See [`docs/validation_levels.md`](validation_levels.md) for the formal
+`RealismLevel` (L0-L4) and `ValidationLevel` (7 levels) taxonomy, and
+`validation_taxonomy.py`'s callable `audit_text_for_banned_terms()` —
+which found and fixed one real violation in this project's own README
+("real-time" claimed without evidence) during the sixty-first addendum.

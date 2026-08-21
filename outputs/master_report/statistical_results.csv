@@ -1,0 +1,37 @@
+Comparison,Mean_diff,CI95_low,CI95_high,Wins,Paired_t_p,Wilcoxon_p,Cohens_d,Source_File,margin,alpha,mean_difference,p_lower,p_upper,p_tost,equivalent,n_seeds,Unnamed: 0,Unnamed: 1,HALT_pct,HALT_pct.1,WAIT_pct,WAIT_pct.1,PURIFY_pct,PURIFY_pct.1
+DualHead vs Blind,7.822,5.055,10.589,10/10,0.0001,0.002,2.022,controller_comparison_10seed_pairwise.csv,,,,,,,,,,,,,,,,
+DualHead vs Reactive,7.411,4.433,10.389,10/10,0.0003,0.002,1.78,controller_comparison_10seed_pairwise.csv,,,,,,,,,,,,,,,,
+DualHead vs Predictive,7.453,4.609,10.297,10/10,0.0002,0.002,1.875,controller_comparison_10seed_pairwise.csv,,,,,,,,,,,,,,,,
+,,,,,,,,equivalence_test_wdm_vs_oracle.json,0.005,0.05,-0.000615899999999,0.0017102042287820002,0.000348257795121,0.0017102042287820002,1.0,10.0,,,,,,,,
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,,,mean,std,mean,std,mean,std
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,Weight,Multiplier,,,,,,
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_QPU (E_QPU_PER_GATE_J),0.1,0.0,0.0,0.08,0.17,99.92,0.17
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_QPU (E_QPU_PER_GATE_J),0.5,0.0,0.0,0.12,0.21,99.88,0.21
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_QPU (E_QPU_PER_GATE_J),1.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_QPU (E_QPU_PER_GATE_J),2.0,0.0,0.0,0.81,1.67,99.19,1.67
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_QPU (E_QPU_PER_GATE_J),5.0,0.0,0.0,6.87,7.55,93.13,7.55
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_QPU (E_QPU_PER_GATE_J),10.0,0.0,0.0,100.0,0.0,0.0,0.0
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_energy (P_INFERENCE_EDGE_W),0.1,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_energy (P_INFERENCE_EDGE_W),0.5,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_energy (P_INFERENCE_EDGE_W),1.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_energy (P_INFERENCE_EDGE_W),2.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_energy (P_INFERENCE_EDGE_W),5.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_energy (P_INFERENCE_EDGE_W),10.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_failure (FAILURE_COST_J),0.1,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_failure (FAILURE_COST_J),0.5,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_failure (FAILURE_COST_J),1.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_failure (FAILURE_COST_J),2.0,0.0,0.0,0.24,0.41,99.76,0.41
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_failure (FAILURE_COST_J),5.0,0.0,0.0,0.3,0.52,99.7,0.52
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_failure (FAILURE_COST_J),10.0,0.0,0.0,0.59,1.35,99.41,1.35
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_fidelity (VALUE_MISSED_GOOD_PAIR_J),0.1,0.0,0.0,100.0,0.0,0.0,0.0
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_fidelity (VALUE_MISSED_GOOD_PAIR_J),0.5,0.0,0.0,1.01,2.06,98.99,2.06
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_fidelity (VALUE_MISSED_GOOD_PAIR_J),1.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_fidelity (VALUE_MISSED_GOOD_PAIR_J),2.0,0.0,0.0,0.1,0.21,99.9,0.21
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_fidelity (VALUE_MISSED_GOOD_PAIR_J),5.0,0.0,0.0,0.02,0.06,99.98,0.06
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_fidelity (VALUE_MISSED_GOOD_PAIR_J),10.0,0.0,0.0,0.0,0.0,100.0,0.0
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_latency (WAIT_LATENCY_COST_PER_S),0.1,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_latency (WAIT_LATENCY_COST_PER_S),0.5,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_latency (WAIT_LATENCY_COST_PER_S),1.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_latency (WAIT_LATENCY_COST_PER_S),2.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_latency (WAIT_LATENCY_COST_PER_S),5.0,0.0,0.0,0.2,0.3,99.8,0.3
+,,,,,,,,risk_aware_sensitivity_summary.csv,,,,,,,,,C_latency (WAIT_LATENCY_COST_PER_S),10.0,0.0,0.0,0.2,0.3,99.8,0.3

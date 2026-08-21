@@ -1,0 +1,16 @@
+Regime,Delta_MAE_full_features,Delta_MAE_WDM_only,Source_File,MAE,RMSE,R2,N,Delta_MAE_vs_ID
+ID (held-out),0.0,0.0,domain_shift_comparison.csv,,,,,
+B: 5x higher noise,0.00938,0.02368,domain_shift_comparison.csv,,,,,
+C: worse T1/T2 (30%),0.18016,0.23109,domain_shift_comparison.csv,,,,,
+C-reverse: better T1/T2 (2x),0.06526,0.07742,domain_shift_comparison.csv,,,,,
+A: 2x link distance,0.13809,0.04183,domain_shift_comparison.csv,,,,,
+ID (held-out),,,domain_shift_full_features.csv,0.01658,0.03478,0.203,484.0,0.0
+B: 5x higher noise,,,domain_shift_full_features.csv,0.02595,0.03435,-0.2841,1230.0,0.00938
+C: worse T1/T2 (30%),,,domain_shift_full_features.csv,0.19674,0.19692,-530.5905,1256.0,0.18016
+C-reverse: better T1/T2 (2x),,,domain_shift_full_features.csv,0.08184,0.08482,-3.6914,1251.0,0.06526
+A: 2x link distance,,,domain_shift_full_features.csv,0.15466,0.15641,-14.0098,717.0,0.13809
+ID (held-out),,,domain_shift_wdm_only.csv,0.02175,0.03942,-0.0238,484.0,0.0
+B: 5x higher noise,,,domain_shift_wdm_only.csv,0.04544,0.05078,-1.8099,1230.0,0.02368
+C: worse T1/T2 (30%),,,domain_shift_wdm_only.csv,0.25285,0.2532,-967.8732,1256.0,0.23109
+C-reverse: better T1/T2 (2x),,,domain_shift_wdm_only.csv,0.09917,0.10151,-5.6995,1251.0,0.07742
+A: 2x link distance,,,domain_shift_wdm_only.csv,0.06358,0.06918,-1.9749,717.0,0.04183

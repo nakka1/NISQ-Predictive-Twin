@@ -62,8 +62,8 @@ def test_summarize_multihop_run_returns_all_expected_keys():
     results = env.run(_always_purify, n_rounds=5)
     summary = summarize_multihop_run(results, threshold=0.65)
     expected_keys = {"n_rounds", "mean_final_fidelity", "useful_pairs", "success_probability_pct",
-                      "purification_count", "qpu_operations", "total_latency_s", "total_energy_J",
-                      "failure_rate_pct"}
+                      "purification_count", "false_purification_count", "missed_opportunity_count",
+                      "qpu_operations", "total_latency_s", "total_energy_J", "failure_rate_pct"}
     assert set(summary.keys()) == expected_keys
 
 

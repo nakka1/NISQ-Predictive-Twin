@@ -38,10 +38,13 @@ explicit tolerance, designed to catch silent physics drift.
 Markers (`tests/conftest.py`, auto-applied by file name):
 
 ```bash
-pytest -m unit          # 89 tests
-pytest -m physics        # 149 tests
-pytest -m integration      # 53 tests
+pytest -m unit          # 151 tests
+pytest -m physics        # 157 tests
+pytest -m integration      # 70 tests
+pytest -m statistical         # 28 tests
+pytest -m benchmark              # 9 tests
 pytest -m slow               # heavier tests, excluded from CI by default
+pytest -m experimental          # newer, less-battle-tested coverage
 ```
 
 ## Running the full suite locally
@@ -74,3 +77,12 @@ detection power (not just always passing) — a real false positive found
 during development (an F_t=0.0 value collision at the split boundary,
 expected given F_t=0.0's ~36% base rate in this dataset, not an actual
 bug) is documented and guarded against explicitly.
+
+## Master experiment database
+
+`master_experiment_db.py` consolidates headline experiment results into
+a single `outputs/experiments/master_results.csv`/`.json`, with a
+consistent schema (experiment_id, seed, model, controller, feature_set,
+MAE, RMSE, R2, and more) across every experiment type. Populated via
+`run_consolidate_master_results.py` from six headline experiments (110
+records) — not yet all ~63 accumulated result files in this project.

@@ -1,0 +1,6 @@
+Controller,Purification_Count,Useful_Pairs,Useful_Pair_Rate_pct,False_Purification_FP,Missed_Opportunity_FN,Total_Latency_ms,Total_Energy_J,Note
+Blind,796,247,31.03,,,1487.49,0.029261,
+Reactive,487,154,31.62,333.0,93.0,992.75,0.026171,
+Predictive,796,247,31.03,549.0,0.0,1487.49,0.029261,
+DualHead,468,211,45.09,257.0,36.0,962.32,0.025981,
+Oracle,247,247,100.0,0.0,0.0,608.48,0.023771,

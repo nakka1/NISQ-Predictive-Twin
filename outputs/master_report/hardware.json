@@ -1,0 +1,9 @@
+{
+  "cpu_model": "x86_64",
+  "cpu_logical_cores": 1,
+  "machine_architecture": "x86_64",
+  "total_ram_bytes": 4192088064,
+  "gpu_name": null,
+  "gpu_count": 0,
+  "gpu_total_memory_bytes": null
+}

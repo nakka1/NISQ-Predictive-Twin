@@ -3,6 +3,11 @@ tests/test_physics_engine.py
 
 Unit tests for quantum_twin/quantum/physics_engine.py -- the formal
 QuantumPhysicsEngine abstraction (master prompt Phase 4).
+
+Master prompt v4, Fase 16: `FastEngine` was renamed to `AnalyticalEngine`
+(the name should describe WHAT the engine is -- closed-form analytical
+computation -- not an untested speed claim). `FastEngine` is kept as a
+backward-compatible alias, verified explicitly below.
 """
 import sys
 import os
@@ -10,17 +15,24 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
-from quantum_twin.quantum.physics_engine import (ReferenceEngine, FastEngine, PhysicsRegime,
-                                                    DEFAULT_REGIMES, run_engine_benchmark,
+from quantum_twin.quantum.physics_engine import (ReferenceEngine, AnalyticalEngine, FastEngine,
+                                                    PhysicsRegime, DEFAULT_REGIMES, run_engine_benchmark,
                                                     benchmark_object_reuse_effect)
 
 
-def test_reference_and_fast_engines_agree_to_floating_point_precision():
+def test_fast_engine_is_a_backward_compatible_alias_for_analytical_engine():
+    """Regression guard for the Fase 16 rename: FastEngine must remain
+    usable, and must be the IDENTICAL class (not a separate, possibly
+    -diverging copy), so existing code/imports never silently break."""
+    assert FastEngine is AnalyticalEngine
+
+
+def test_reference_and_analytical_engines_agree_to_floating_point_precision():
     ref = ReferenceEngine()
-    fast = FastEngine()
+    analytical = AnalyticalEngine()
     f_ref = ref.simulate_fidelity(T1=50e-6, T2=30e-6, depol_prob=0.01, exposure_time=1e-5)
-    f_fast = fast.simulate_fidelity(T1=50e-6, T2=30e-6, depol_prob=0.01, exposure_time=1e-5)
-    assert f_ref == pytest.approx(f_fast, abs=1e-9)
+    f_analytical = analytical.simulate_fidelity(T1=50e-6, T2=30e-6, depol_prob=0.01, exposure_time=1e-5)
+    assert f_ref == pytest.approx(f_analytical, abs=1e-9)
 
 
 def test_timed_simulate_fidelity_returns_fidelity_and_positive_latency():
@@ -33,8 +45,8 @@ def test_timed_simulate_fidelity_returns_fidelity_and_positive_latency():
 def test_run_engine_benchmark_returns_all_expected_columns():
     df = run_engine_benchmark(regimes=DEFAULT_REGIMES[:2], n_timing_reps=5)
     expected_columns = {"regime", "T1", "T2", "depol_prob", "exposure_time", "reference_fidelity",
-                         "fast_fidelity", "absolute_error", "relative_error", "reference_latency_s",
-                         "fast_latency_s", "speedup"}
+                         "analytical_fidelity", "absolute_error", "relative_error", "reference_latency_s",
+                         "analytical_latency_s", "speedup"}
     assert expected_columns.issubset(set(df.columns))
     assert len(df) == 2
 

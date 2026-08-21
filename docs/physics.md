@@ -30,13 +30,13 @@ a first-principles decoherence derivation.
 - **`ReferenceEngine`** (`quantum_channel_v3.QuantumChannel`): builds a
   real noisy circuit and runs it through `AerSimulator(method="density_matrix")`.
   The most physically faithful engine in this project.
-- **`FastEngine`** (`quantum_channel.QuantumNoiseChannel`): closed-form
+- **`AnalyticalEngine`** (`quantum_channel.QuantumNoiseChannel`, formerly named `FastEngine` -- kept as a backward-compatible alias): closed-form
   Kraus-operator algebra (depolarizing x amplitude-damping x
   phase-damping), no circuit execution.
 
 Both agree to floating-point precision on every regime tested
 (`quantum_twin/quantum/physics_engine.py`'s benchmark). Speed is
-regime-dependent: `FastEngine` wins ~6x when a fresh engine object must
+regime-dependent: `AnalyticalEngine` wins ~6x when a fresh engine object must
 be constructed per call, shows no advantage when an engine object is
 reused (as the actual dataset generator does).
 

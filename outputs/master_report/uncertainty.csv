@@ -1,0 +1,15 @@
+Method,MAE,RMSE,Coverage_pct,Sharpness_mean_width,ECE,Brier_proxy,P50_width,P90_width,P95_width,Source_File,Window,N,Mean_Width
+Deep Ensemble,0.26355,0.40594,85.8,0.96331,0.17905,0.12357,1.0,1.0,1.0,uncertainty_method_comparison.csv,,,
+MC Dropout,0.30263,0.31432,0.38,0.0286,0.00602,0.80698,0.02423,0.04137,0.06561,uncertainty_method_comparison.csv,,,
+Quantile Regression,0.25368,0.3885,59.67,0.67529,0.06191,0.33261,0.67702,0.68552,0.68725,uncertainty_method_comparison.csv,,,
+Conformal Prediction,0.26108,0.4023,89.07,0.99971,0.15214,0.09744,1.0,1.0,1.0,uncertainty_method_comparison.csv,,,
+Standard Conformal,,,88.68,,,,,,,temporal_conformal_windowed_coverage.csv,0.0,159.0,0.99957
+Standard Conformal,,,86.79,,,,,,,temporal_conformal_windowed_coverage.csv,1.0,159.0,0.99959
+Standard Conformal,,,87.42,,,,,,,temporal_conformal_windowed_coverage.csv,2.0,159.0,0.9995
+Standard Conformal,,,83.02,,,,,,,temporal_conformal_windowed_coverage.csv,3.0,159.0,0.99947
+Standard Conformal,,,83.12,,,,,,,temporal_conformal_windowed_coverage.csv,4.0,160.0,0.99959
+Adaptive Conformal (ACI),,,88.68,,,,,,,temporal_conformal_windowed_coverage.csv,0.0,159.0,0.99947
+Adaptive Conformal (ACI),,,89.94,,,,,,,temporal_conformal_windowed_coverage.csv,1.0,159.0,0.9997
+Adaptive Conformal (ACI),,,86.16,,,,,,,temporal_conformal_windowed_coverage.csv,2.0,159.0,0.99961
+Adaptive Conformal (ACI),,,88.68,,,,,,,temporal_conformal_windowed_coverage.csv,3.0,159.0,0.99962
+Adaptive Conformal (ACI),,,86.25,,,,,,,temporal_conformal_windowed_coverage.csv,4.0,160.0,0.99981

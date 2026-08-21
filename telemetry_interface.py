@@ -153,6 +153,16 @@ class TelemetrySource(ABC):
         raise NotImplementedError
 
     def validate(self, data: pd.DataFrame) -> ValidationResult:
+        """
+        Extended in the seventieth addendum (master prompt v4 Fase 24) to
+        add TIMESTAMP validation (presence, monotonicity, duplicates) and
+        SAMPLING RATE validation (actual vs. `schema().expected_sampling_period_s`
+        when `requires_regular_sampling=True`) -- the two checks the
+        master prompt names explicitly that the schema already had FIELDS
+        for (`timestamp_column`, `requires_regular_sampling`,
+        `expected_sampling_period_s`) but `validate()` never actually USED
+        until now.
+        """
         schema = self.schema()
         issues = []
 
@@ -181,7 +191,53 @@ class TelemetrySource(ABC):
                         col_spec.name, "out_of_range",
                         f"{n_above} value(s) above valid_max={col_spec.valid_max} ({col_spec.unit})"))
 
+        if schema.timestamp_column in data.columns:
+            ts_issues = self._validate_timestamps(data[schema.timestamp_column], schema)
+            issues.extend(ts_issues)
+
         return ValidationResult(is_valid=(len(issues) == 0), issues=issues)
+
+    def _validate_timestamps(self, timestamps: pd.Series, schema: TelemetrySchema) -> list:
+        """Real timestamp/sampling-rate checks: monotonicity, duplicates,
+        and (when `requires_regular_sampling=True`) actual vs. expected
+        sampling period -- not just column presence."""
+        issues = []
+        ts = pd.to_datetime(timestamps, errors="coerce")
+
+        n_unparseable = int(ts.isna().sum())
+        if n_unparseable > 0:
+            issues.append(ValidationIssue(schema.timestamp_column, "invalid_timestamp",
+                                           f"{n_unparseable} value(s) could not be parsed as timestamps"))
+
+        ts_clean = ts.dropna()
+        if len(ts_clean) < 2:
+            return issues
+
+        if not ts_clean.is_monotonic_increasing:
+            n_non_monotonic = int((ts_clean.diff().dropna() < pd.Timedelta(0)).sum())
+            issues.append(ValidationIssue(
+                schema.timestamp_column, "non_monotonic_timestamp",
+                f"{n_non_monotonic} timestamp(s) go backward relative to the previous row -- "
+                f"telemetry must arrive in temporal order."))
+
+        n_duplicates = int(ts_clean.duplicated().sum())
+        if n_duplicates > 0:
+            issues.append(ValidationIssue(schema.timestamp_column, "duplicate_timestamp",
+                                           f"{n_duplicates} duplicate timestamp value(s) found."))
+
+        if schema.requires_regular_sampling and schema.expected_sampling_period_s is not None:
+            diffs_s = ts_clean.diff().dropna().dt.total_seconds()
+            if len(diffs_s) > 0:
+                expected = schema.expected_sampling_period_s
+                tolerance = expected * 0.1  # 10% tolerance, an explicit, stated allowance
+                n_irregular = int(((diffs_s - expected).abs() > tolerance).sum())
+                if n_irregular > 0:
+                    issues.append(ValidationIssue(
+                        schema.timestamp_column, "irregular_sampling",
+                        f"{n_irregular} interval(s) deviate from the expected {expected}s sampling "
+                        f"period by more than {tolerance:.4f}s -- consider resample_to_regular_grid()."))
+
+        return issues
 
 
 class SyntheticWDMSource(TelemetrySource):
